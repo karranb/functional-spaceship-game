@@ -1,0 +1,44 @@
+{
+  "name": "game",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "watch": "webpack-dev-server",
+    "production": "webpack -p",
+    "build": "webpack",
+    "lint": "eslint src/**",
+    "prettier": "yarn lint --fix",
+    "stylelint": "stylelint src/web/assets/style/**/*.css"
+  },
+  "dependencies": {
+    "pixi.js": "^4.7.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.4.0",
+    "@babel/preset-env": "^7.4.2",
+    "@babel/register": "^7.4.0",
+    "babel-eslint": "^10.0.1",
+    "babel-loader": "^8.0.5",
+    "babel-preset-es2018": "^1.0.0",
+    "css-loader": "^2.1.1",
+    "cssnano": "^4.1.10",
+    "eslint": "^5.15.3",
+    "eslint-config-cheesecakelabs": "^3.0.2",
+    "eslint-import-resolver-webpack": "^0.11.0",
+    "eslint-plugin-prettier": "^3.0.1",
+    "file-loader": "^3.0.1",
+    "mini-css-extract-plugin": "^0.5.0",
+    "postcss": "^7.0.14",
+    "postcss-import": "^12.0.1",
+    "postcss-loader": "^3.0.0",
+    "postcss-preset-env": "^6.6.0",
+    "prettier": "^1.16.4",
+    "stylelint": "^9.10.1",
+    "stylelint-config-standard": "^18.2.0",
+    "stylelint-webpack-plugin": "^0.10.5",
+    "webpack": "^4.29.6",
+    "webpack-cli": "^3.3.0",
+    "webpack-dev-server": "^3.2.1"
+  }
+}
