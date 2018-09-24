@@ -2,9 +2,9 @@ const ExtractTextPlugin = require('extract-text-webpack-plugin')
 const path = require('path')
 
 module.exports = {
-  entry: ['./src/js/index.js', './assets/style/index.scss'],
+  entry: ['./src/index.js', './src/web/assets/style/index.scss'],
   output: {
-    filename: 'js/bundle.js',
+    filename: './bundle.js',
   },
   module: {
     rules: [
@@ -48,15 +48,18 @@ module.exports = {
   ],
   resolve: {
     alias: {
-      _buttons: path.resolve(__dirname, 'src/js/buttons/'),
-      _canvas: path.resolve(__dirname, 'src/js/canvas/'),
-      _engine: path.resolve(__dirname, 'src/js/engine/'),
-      _game: path.resolve(__dirname, 'src/js/game/'),
-      _player: path.resolve(__dirname, 'src/js/player/'),
-      _spaceship: path.resolve(__dirname, 'src/js/spaceship/'),
-      _utils: path.resolve(__dirname, 'src/js/utils/'),
-      _base: path.resolve(__dirname, 'src/js/utils/base'),
-      _assets: path.resolve(__dirname, 'assets/'),
+      // _buttons: path.resolve(__dirname, 'src/js/web/components/buttons/'),
+      // _canvas: path.resolve(__dirname, 'src/js/web/components/canvas/'),
+      _models: path.resolve(__dirname, 'src/models/'),
+      _ai: path.resolve(__dirname, 'src/ai/'),
+      // _engine: path.resolve(__dirname, 'src/js/models/engine/'),
+      // _game: path.resolve(__dirname, 'src/js/models/game/'),
+      // _player: path.resolve(__dirname, 'src/js/models/player/'),
+      // _spaceship: path.resolve(__dirname, 'src/js/models/spaceship/'),
+      _web: path.resolve(__dirname, 'src/web'),
+      _utils: path.resolve(__dirname, 'src/utils/'),
+      _assets: path.resolve(__dirname, 'src/web/assets/'),
+      _components: path.resolve(__dirname, 'src/web/components/'),
     },
   },
 }
