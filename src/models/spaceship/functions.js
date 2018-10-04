@@ -120,12 +120,25 @@ export const update = spaceship => {
   }
   const vel = 2
   const newPosition = move(coordinate, destination)(vel)
-  return setCoordinate(newPosition)(
+  const movedSpaceship = setCoordinate(newPosition)(
     Spaceship({
       ...state,
       bullets,
     })
   )
+  if (areEqualCoordinates(coordinate, destination)) {
+    if (state.onStop) {
+      return Spaceship({
+        ...state.onStop(movedSpaceship).getState(),
+        destination: null,
+      })  
+    }
+    return Spaceship({
+      ...movedSpaceship.getState(),
+      destination: null,
+    })
+  }
+  return movedSpaceship
 }
 
 const processCollisionWithSpaceship = spaceship => otherSpaceship => {

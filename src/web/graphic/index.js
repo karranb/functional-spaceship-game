@@ -29,6 +29,7 @@ export const setLineStyle = (size, color) => element => {
 }
 
 export const setPosition = coordinate => element => {
+  if (!coordinate) return element
   element.position.x = coordinate.x()
   element.position.y = coordinate.y()
   return element
@@ -108,6 +109,7 @@ export const dettachCursor = graphic => {
 export const spriteFromImage = image => PIXI.Sprite.fromImage(image)
 
 export const rotate = rad => element => {
+  if (!rad) return element
   element.rotation = rad
   return element
 }

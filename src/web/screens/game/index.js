@@ -5,7 +5,7 @@ import Spaceship from '_models/spaceship'
 import { rotate, setCoordinate } from '_models/spaceship/functions'
 import Background from '_web/components/background'
 import { setupGameView, addChild } from '_web/graphic'
-import { Spaceship as SpaceshipGraphic } from '_web/components/spaceship'
+import { Spaceship as SpaceshipGraphic, MovingSpaceship } from '_web/components/spaceship'
 import {
   TOP_LEFT_ANGLE,
   BOTTOM_RIGHT_ANGLE,
@@ -15,14 +15,15 @@ import {
 } from '_utils/constants'
 import { getById } from '_utils/functions/helper'
 import { compose } from '_utils/functions/base'
-import userSpaceshipImg from '_assets/images/spaceship/blue/blue-still.png'
-import enemySpaceshipImg from '_assets/images/spaceship/red/red-still.png'
+// import userSpaceshipImg from '_assets/images/spaceship/blue/blue-still.png'
+// import enemySpaceshipImg from '_assets/images/spaceship/red/red-still.png'
 
 import {
   onRotate,
   onSetCoordinate,
   onDestroySpaceship,
   onSelectSpaceship,
+  onSpaceshipStop,
   onSetDestination,
   onSetTarget,
   onStartUpdate,
@@ -30,6 +31,7 @@ import {
   onNewRound,
   onGameEnd,
 } from './listeners'
+
 
 export const startGame = (user, enemy) => {
   const div = getById('game')
@@ -48,13 +50,14 @@ export const startGame = (user, enemy) => {
   const baseSpaceship = Spaceship({
     onRotate,
     onSetCoordinate,
+    onStop: onSpaceshipStop(graphic),
     onDestroy: onDestroySpaceship(graphic),
   })
 
   const setupUser = player => {
     const state = player.getState()
     const spaceships = state.spaceships.map((spaceship, i) => {
-      const spaceshipGraphic = SpaceshipGraphic(userSpaceshipImg)
+      const spaceshipGraphic = SpaceshipGraphic(spaceship)
       addChild(spaceshipGraphic)(graphic)
       return positionateSpaceship(USER_SPACESHIP_COORDINATES[i])(BOTTOM_RIGHT_ANGLE)(
         Spaceship({
@@ -73,7 +76,7 @@ export const startGame = (user, enemy) => {
   const setupEnemy = player => {
     const state = player.getState()
     const spaceships = state.spaceships.map((spaceship, i) => {
-      const spaceshipGraphic = SpaceshipGraphic(enemySpaceshipImg)
+      const spaceshipGraphic = SpaceshipGraphic(spaceship)
       addChild(spaceshipGraphic)(graphic)
       return positionateSpaceship(ENEMY_SPACESHIP_COORDINATES[i])(TOP_LEFT_ANGLE)(
         Spaceship({
