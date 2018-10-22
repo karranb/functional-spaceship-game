@@ -7,27 +7,32 @@ export const GAME_SIZE = Size(800, 500)
 export const MAX_ROUNDS = 15
 
 export const SPACESHIP_COLLISION_DAMAGE = 20
-export const SPACESHIP_SIZES = Size(44.7, 32.9)
+
 export const SPACESHIP_TYPES = {
   spaceship1: Spaceship({
     shield: 400,
     speed: 1200,
+    size: Size(44.7, 32.9),
   }),
   spaceship2: Spaceship({
     shield: 700,
     speed: 900,
+    size: Size(44.7, 32.9),
   }),
   spaceship3: Spaceship({
     shield: 800,
     speed: 800,
+    size: Size(44.7, 32.9),
   }),
   spaceship4: Spaceship({
     shield: 1000,
     speed: 600,
+    size: Size(44.7, 32.9),
   }),
   spaceship5: Spaceship({
     shield: 1200,
     speed: 400,
+    size: Size(44.7, 32.9),
   }),
 }
 

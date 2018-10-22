@@ -15,102 +15,124 @@ import {
 import { compose } from '_utils/functions/base'
 
 import Engine from './index'
+import { either } from '../../utils/functions/maybe';
 
-export const getUser = engine => engine.getState().players.find(isUser)
-export const getNonUsers = engine => engine.getState().players.filter(isNotUser)
+/**
+ * Get player that is controlled by user
+ */
+export const getUser = engine => either(engine.getProp('players').map(players => players.find(isUser)), null)
 
+/**
+ * get players that are not contrlled by user
+ */
+export const getNonUsers = engine => either(engine.getProp('players').map(players => players.filter(isNotUser)), null)
+
+/**
+ * Start a new round
+ */
 export const newRound = engine => {
-  const state = engine.getState()
-  const round = state.round + 1
-  const players = state.players
-    .map(removeDestroyedSpaceships)
-    .filter(player => player.getState().spaceships.length)
-  const newEngine = Engine({
-    ...state,
-    round,
-    players,
-  })
+  const round = either(engine.getProp('round').map(round => round + 1), 0)
+
+  const players = either(engine.getProp('players').map(players => players.map(removeDestroyedSpaceships)
+  .filter(player => either(player.getProp('spaceships').map(spaceships => spaceships.length), 0))
+  ), [])
+
+  const newEngine = engine.assignState({ round, players })
+
   if (round >= MAX_ROUNDS || players.length <= 1) {
-    state.onGameEnd(newEngine)
+    engine.getProp('onGameEnd').apply(newEngine)
+    return newEngine
   }
-  if (state.onNewRound) {
-    state.onNewRound(newEngine)
-  }
+  engine.getProp('onNewRound').apply(newEngine)
   return newEngine
 }
 
+/**
+ * Update engine's state
+ */
 export const update = engine => {
-  const state = engine.getState()
-  const players = state.players
-    .map(updatePlayer)
-    .map((player, _, allPlayers) => processCollisions(player)(allPlayers))
-  const isPlayerReady = player => isReady(player)
-  const allReady = players.every(isPlayerReady)
-  const newEngine = Engine({
-    ...state,
-    players,
-  })
+  const players = either(engine.getProp('players').map(
+    players => players
+      .map(updatePlayer)
+      .map((player, _, allPlayers) => processCollisions(player)(allPlayers))
+  ), [])
 
+  const isPlayerReady = player => isReady(player)
+
+  const allReady = players.every(isPlayerReady)
+
+  const newEngine = engine.assignState({ players })
+
+    
   if (allReady) {
     return newRound(newEngine)
   }
-  state.onUpdate(newEngine)
+  engine.getProp('onUpdate').apply(newEngine)
   return newEngine
 }
 
-export const startUpdate = engine => {
-  const state = engine.getState()
-  return state.onStartUpdate(engine)
-}
+/**
+ * Start to update engine
+ */
+export const startUpdate = engine => engine.getProp('onStartUpdate').apply(engine)
 
-const updatedPlayerList = engine => user => {
-  const state = engine.getState()
+/**
+ * update engine player list
+ */
+const updateUser = engine => user => {
   const otherPlayers = getNonUsers(engine)
-  return Engine({
-    ...state,
-    players: [...otherPlayers, user],
-  })
+  return engine.assignState({ players: [ ...otherPlayers, user ] })
 }
 
+/**
+ * Get user selected spaceship
+ */
 export const getSelectedSpaceship = engine =>
   compose(
     getSelected,
     getUser
   )(engine)
 
+/**
+ * replace user selected spaceship
+ */
 export const replaceSelectedSpaceship = spaceship => engine =>
   compose(
-    updatedPlayerList(engine),
+    updateUser(engine),
     replaceSelected(spaceship),
     getUser
   )(engine)
 
-export const selectSpaceshipTarget = targetCoordinate => engine => {
-  const state = engine.getState()
-  return compose(
-    state.onSetTarget,
-    updatedPlayerList(engine),
+/**
+ * set a target to user selected spaceship
+ */
+export const selectSpaceshipTarget = targetCoordinate => engine =>
+  compose(
+    newEngine => either(newEngine.getProp('onSetTarget').apply(newEngine), newEngine),
+    updateUser(engine),
     setSelectedTarget(targetCoordinate),
     getUser
   )(engine)
-}
 
-export const selectSpaceshipDestination = destination => engine => {
-  const state = engine.getState()
-  return compose(
-    state.onSetDestination,
-    updatedPlayerList(engine),
+/**
+ * set a destination to the user sleected spaceship
+ */
+export const selectSpaceshipDestination = destination => engine =>
+  compose(
+    newEngine =>  either(newEngine.getProp('onSetDestination').apply(newEngine), newEngine),
+    updateUser(engine),
     setSelectedDestination(destination),
     getUser
   )(engine)
-}
 
-export const selectSpaceship = spaceship => engine => {
-  const state = engine.getState()
-  return compose(
-    state.onSelectSpaceship(spaceship),
-    updatedPlayerList(engine),
+
+/**
+ * set a user spaceship as selected
+ */
+export const selectSpaceship = spaceship => engine =>
+  compose(
+    newEngine => either(newEngine.getProp('onSelectSpaceship').apply(spaceship, newEngine), newEngine),
+    updateUser(engine),
     selectUserSpaceship(spaceship),
     getUser
   )(engine)
-}

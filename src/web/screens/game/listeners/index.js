@@ -41,7 +41,10 @@ import {
   deactivateSpaceshipsSelection,
 } from '../controller'
 
+
+
 import { Spaceship as SpaceshipGraphic, MovingSpaceship, ExplodingSpaceship } from '_web/components/spaceship'
+import { getPropsAndMap, either } from '_utils/functions/maybe';
 
 
 /**
@@ -77,15 +80,15 @@ export const onTargetSelect = e => engine => {
 /**
  * Bullet Listeners
  */
-
-export const onBulletMove = bullet => {
-  const { coordinate, element } = bullet.getState()
-  return setPosition(coordinate)(element)
-}
+//todo uncurry setposition or curry getProps and map
+export const onBulletMove = bullet => 
+  either(
+    getPropsAndMap(bullet)((coordinate, element) => setPosition(coordinate)(element))('coordinate', 'element'),
+    bullet
+  )
 
 export const onDestroyBullet = graphic => bullet => {
-  const { element } = bullet.getState()
-  removeChild(element)(graphic)
+  bullet.getProp('element').map(element => removeChild(element))(graphic)
   return bullet
 }
 
@@ -94,30 +97,32 @@ export const onDestroyBullet = graphic => bullet => {
  */
 
  export const onSpaceshipStop = graphic => spaceship => {
-  const state = spaceship.getState()
-  if (state.destroyed) return spaceship
-  removeChild(state.element)(graphic)
-  const element = setPosition(state.coordinate)(SpaceshipGraphic(spaceship))
-  addChild(element)(graphic)
-  return Spaceship({
-    ...state,
-    element,
-  })
- }
+  const newSpaceship = getPropsAndMap(spaceship)((isDestroyed, oldElement, coordinate) => {
+    if (isDestroyed) return spaceship
+    removeChild(oldElement)(graphic)
+    const element = setPosition(coordinate)(SpaceshipGraphic(spaceship))
+    addChild(element)(graphic)
+    return spaceship.assignState({ element })
+  })('isDestroyed', 'element', 'coordinate')
+  return either(newSpaceship, spaceship)
+}
 
 export const onRotate = spaceship => {
-  const { rotation, element } = spaceship.getState()
-  return rotateElement(rotation)(element)
+  const newSpaceship = getPropsAndMap(spaceship)((rotation, element) => {
+    rotateElement(rotation)(element)
+  })('rotate', 'element')
+  return either(newSpaceship, spaceship) 
 }
 
 export const onSetCoordinate = spaceship => {
-  const { coordinate, element } = spaceship.getState()
-  return setPosition(coordinate)(element)
+  const newSpaceship = getPropsAndMap(spaceship)((coordinate, element) => {
+    setPosition(coordinate)(element)
+  })('coordinate', 'element')
+  return either(newSpaceship, spaceship)
 }
 
 export const onDestroySpaceship = graphic => spaceship => {
-  const { element } = spaceship.getState()
-  removeChild(element)(graphic)
+  spaceship.getProp('element').map(element => removeChild(element)(graphic))
   addChild(ExplodingSpaceship(spaceship)(graphic))(graphic)
   return spaceship
 }
@@ -127,125 +132,108 @@ export const onDestroySpaceship = graphic => spaceship => {
  */
 
 const setAIRoundStart = otherPlayers => player => {
-  const playerState = player.getState()
-  const getSpaceships = (spaceships, otherPlayer) => [
-    ...spaceships,
-    ...otherPlayer.getState().spaceships,
-  ]
+  const getSpaceships = (spaceships, otherPlayer) => either(
+    otherPlayer.getProp('spaceships').map(otherSpaceships => ([
+      ...spaceships,
+      ...otherSpaceships,
+    ])), spaceships)
+    
   const otherSpaceships = otherPlayers.reduce(getSpaceships, [])
   const AIFunctions = compose(
     selectAISpaceshipTarget(otherSpaceships),
     selectAISpaceshipDestination
   )
-  const spaceships = playerState.spaceships.map(AIFunctions)
-  return Player({
-    ...playerState,
-    spaceships,
-  })
+  const spaceships = either(player.getProp('spaceships').map(spaceships => spaceships.map(AIFunctions)), [])
+  return player.assignState({ spaceships })
 }
 
 const setRoundStartGraphics = graphic => player => {
-  const playerState = player.getState()
-  const spaceships = playerState.spaceships.map(spaceship => {
-
-    const spaceshipState = spaceship.getState()
-    const { target, path, bullets } = spaceshipState
-    if (target) {
-      removeChild(target)(graphic)
-    }
-    if (path) {
-      removeChild(path)(graphic)
-    }
-
-    const newBullets = bullets.map(bullet => {
-      const element = BulletGraphic(bullet)
-      addChild(element)(graphic)
-      const bulletState = bullet.getState()
-      return Bullet({
-        ...bulletState,
-        element,
-        onMove: onBulletMove,
-        onDestroy: onDestroyBullet(graphic),
-      })
-    })
-
-    if (spaceshipState.destination) {
-      if (spaceshipState.element) {
-        removeChild(spaceshipState.element)(graphic)
-      }
-      const newElement = setPosition(spaceshipState.coordinate)(MovingSpaceship(spaceship))
-      addChild(newElement)(graphic)
-      return Spaceship({ ...spaceshipState, path: null, target: null, bullets: newBullets, element: newElement})
-
-    }
-    return Spaceship({ ...spaceshipState, path: null, target: null, bullets: newBullets})
-  })
-  return Player({
-    ...playerState,
-    spaceships,
-  })
+  const spaceships = player.getProp('spaceships').map(spaceships => spaceships.map(
+    spaceship => 
+      getPropsAndMap(spaceship)((target, path, bullets) => {
+        if (target) {
+          removeChild(target)(graphic)
+        }
+        if (path) {
+          removeChild(path)(graphic)
+        }
+        const newBullets = bullets.map(bullet => {
+          const element = BulletGraphic(bullet)
+          addChild(element)(graphic)
+          bullet.assignState({ element, onMove: onBulletMove, onDestroy: onDestroyBullet(graphic)})
+        })
+        const stoppedSpaceship = getPropsAndMap(player)((element, coordinate) => {
+          removeChild(element)(graphic)
+          const newElement = setPosition(coordinate)(MovingSpaceship(spaceship))
+          addChild(newElement)(graphic)
+          return spaceship.assignState({
+            path: null,
+            target: null,
+            bullets: newBullets,
+            element: newElement
+          })
+        })('element', 'coordinate', 'destination',  )
+        return either(
+          stoppedSpaceship,
+          spaceship.assignState({ path: null, target: null, bullets: newBullets })
+        )    
+      })('target', 'path', 'bullets')      
+  ))
+  if (isNothing(spaceships)) {
+    return player
+  }
+  return player.assignState({ spaceships })
 }
 
 export const onSetDestination = graphic => engine => {
-  const state = engine.getState()
-  const { movingArea } = state
-  const newEngine = Engine({
-    ...state,
-    movingArea: null,
+  const newEngine = engine.getProp('movingArea').map(movingArea => {
+    const newEngine = engine.assignState({ movingArea: null })
+    const spaceship = getSelectedSpaceship(newEngine)
+    const newSpaceship = either(spaceship.getProp('path').map(path => {
+      const newPath = Path(spaceship)
+      addChild(newPath)(graphic)
+      removeChild(path)(graphic)
+      return spaceship.assignState({ path: newPath })
+    }), spaceship)
+    removeChild(movingArea)(graphic)
+    return replaceSelectedSpaceship(newSpaceship)(newEngine)
   })
-  const spaceship = getSelectedSpaceship(newEngine)
-  const spaceshipState = spaceship.getState()
-  const { path } = spaceshipState
-  if (path) {
-    removeChild(path)(graphic)
-  }
-  removeChild(movingArea)(graphic)
-
-  const newPath = Path(spaceship)
-  addChild(newPath)(graphic)
-
-  const newSpaceship = Spaceship({
-    ...spaceshipState,
-    path: newPath,
-  })
-  return replaceSelectedSpaceship(newSpaceship)(newEngine)
+  return either(newEngine, engine)
 }
 
 export const onSelectSpaceship = graphic => spaceship => engine => {
   const movingArea = MovingArea(spaceship)
   addChild(movingArea)(graphic)
-  const state = engine.getState()
-  const newEngine = Engine({ ...state, movingArea })
+  const newEngine = engine.assignState({ movingArea })
   return activateMovingAreaSelection(movingArea)(newEngine)
 }
 
 export const onStartUpdate = graphic => engine => {
   const ticker = newTicker()
-  const state = engine.getState()
-  const players = state.players.map(player => {
-
-    if (isUser(player)) return setRoundStartGraphics(graphic)(player)
-    const otherPlayers = state.players.filter(otherPlayer => otherPlayer !== player)
-    return setRoundStartGraphics(graphic)(setAIRoundStart(otherPlayers)(player))
-  })
-  const newEngine = Engine({ ...state, ticker, players })
-  return update(newEngine)
+  const players = either(engine.getProp('players').map(players =>
+    players.map(player => {
+      if (isUser(player)) return setRoundStartGraphics(graphic)(player)
+      const otherPlayers = players.filter(otherPlayer => otherPlayer !== player)
+      return setRoundStartGraphics(graphic)(setAIRoundStart(otherPlayers)(player))
+    })
+  ), [])
+  return update(engine.assignState({ ticker, players }))
 }
 
 export const onSetTarget = graphic => engine => {
   dettachCursor(graphic)
   const spaceship = getSelectedSpaceship(engine)
-  const spaceshipState = spaceship.getState()
-  const { target } = spaceshipState
-  if (target) {
-    removeChild(target)(graphic)
-  }
-  const newTarget = Target(spaceship)
-  addChild(newTarget)(graphic)
-  const newSpaceship = Spaceship({
-    ...spaceshipState,
-    target: newTarget,
-  })
+  const newSpaceship = either(
+    spaceship.getProp('target').map(target => {
+      if (target) {
+        removeChild(target)(graphic)
+      }
+      const newTarget = Target(spaceship)
+      addChild(newTarget)(graphic)
+      return spaceship.assignState({ target: newTarget })
+    }),
+    spaceship
+  )
   return compose(
     activateReadyBtn,
     replaceSelectedSpaceship(newSpaceship),
@@ -255,9 +243,10 @@ export const onSetTarget = graphic => engine => {
 }
 
 export const onUpdate = engine => {
-  const { ticker } = engine.getState()
-  ticker.update(performance.now())
-  // console.log(`FPS: ${ticker.FPS}`)
+  engine.getProp('ticker').map(ticker => {
+    ticker.update(performance.now())
+    // console.log(`FPS: ${ticker.FPS}`)
+  })
   requestAnimationFrame(() => update(engine))
 }
 

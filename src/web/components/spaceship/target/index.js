@@ -5,14 +5,15 @@ import { compose } from '_utils/functions/base'
 
 const targetSize = 32
 
-const Target = spaceship => {
-  const { targetCoordinate } = spaceship.getState()
-  return compose(
-    setPosition(
-      Coordinate(targetCoordinate.x() - targetSize / 2, targetCoordinate.y() - targetSize / 2)
-    ),
-    spriteFromImage
-  )(targetCursor)
-}
+const Target = spaceship =>
+  spaceship.getProp('targetCoordinate').map(
+    targetCoordinate =>
+      compose(
+        setPosition(
+          Coordinate(targetCoordinate.x() - targetSize / 2, targetCoordinate.y() - targetSize / 2)
+        ),
+        spriteFromImage
+      )(targetCursor)
+  )
 
 export default Target

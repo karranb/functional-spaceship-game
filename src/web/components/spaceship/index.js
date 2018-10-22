@@ -30,23 +30,30 @@ import explosion15 from '_assets/images/spaceship/blue/explosion/explosion15.png
 import explosion16 from '_assets/images/spaceship/blue/explosion/explosion16.png'
 
 
-import * as PIXI from 'pixi.js'
+import { getPropsAndMap , either } from '_utils/functions/maybe';
+import { newAnimation } from '_web/graphic';
 
 
 export const Spaceship = spaceship => {
-  const { coordinate, rotation } = spaceship.getState()
-  return compose(
-    rotate(rotation),
-    setPosition(coordinate),
+  const element = compose(
     setScale(0.1, 0.1),
     setPivot(0.5, 0.5),
     setAnchor(0.5, 0.5),
-    spriteFromImage
+    spriteFromImage,
   )(still)
+  const positionatedElement = getPropsAndMap(spaceship)(
+    (coordinate, rotation) => 
+      compose(
+          rotate(rotation),
+          setPosition(coordinate),
+        )(element) 
+    )('coordinate', 'rotation')
+  console.log(positionatedElement, element)
+  return either(positionatedElement, element)
 }
 
+
 export const MovingSpaceship = spaceship => {
-  const { coordinate, rotation } = spaceship.getState()
   const frames = [
     moving1,
     moving2,
@@ -57,21 +64,21 @@ export const MovingSpaceship = spaceship => {
     moving7,
     moving8,
   ].map(PIXI.Texture.fromImage)
-
-  const anim = new PIXI.extras.AnimatedSprite(frames)
-  anim.animationSpeed = 0.5
-  anim.play();
+  animation(frames, speed)
+  const anim = newAnimation(frames, 0.5)
   return compose(
-    rotate(rotation),
-    setPosition(coordinate),
-    setScale(0.1, 0.1),
-    setPivot(0.5, 0.5),
-    setAnchor(0.5, 0.5),
-  )(anim)
+    result => either(result, anim),
+    getPropsAndMap(spaceship)((rotation, coordinate) => compose(
+      rotate(rotation),
+      setPosition(coordinate),
+      setScale(0.1, 0.1),
+      setPivot(0.5, 0.5),
+      setAnchor(0.5, 0.5),
+    )(anim))('coordinate', 'rotation')
+  )()
 }
 
 export const ExplodingSpaceship = spaceship => graphic => {
-  const { coordinate, rotation } = spaceship.getState()
   const frames = [
     explosion1,
     explosion2,
@@ -90,17 +97,16 @@ export const ExplodingSpaceship = spaceship => graphic => {
     explosion15,
     explosion16,
   ].map(PIXI.Texture.fromImage)
-
-  const anim = new PIXI.extras.AnimatedSprite(frames)
-  anim.animationSpeed = 0.5
-  anim.loop = false
-  anim.onComplete = () => removeChild(anim)(graphic)
-  anim.play();
+  const onComplete = () => removeChild(anim)(graphic)
+  const anim = newAnimation(frames, 0.5, loop = false, onComplete)
   return compose(
-    rotate(rotation),
-    setPosition(coordinate),
-    setScale(0.5, 0.5),
-    setPivot(0.5, 0.5),
-    setAnchor(0.5, 0.5),
-  )(anim)
+    result => either(result, anim),
+    getPropsAndMap(spaceship)((coordinate, rotation) => compose(
+      rotate(rotation),
+      setPosition(coordinate),
+      setScale(0.5, 0.5),
+      setPivot(0.5, 0.5),
+      setAnchor(0.5, 0.5),
+    )(anim))('coordinate', 'rotation')
+  )()
 }

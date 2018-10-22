@@ -1,11 +1,9 @@
 import * as PIXI from 'pixi.js'
 
-import modelFunctions from '_utils/functions/model'
+import { modelFunctions } from '_utils/functions/model'
 import { getById } from '_utils/functions/helper'
 
-export const Graphic = config => ({
-  ...modelFunctions(config),
-})
+export const Graphic = config => ({ ...modelFunctions(Graphic)(config) })
 
 export const setAnchor = (x, y) => element => {
   element.anchor.x = x
@@ -62,6 +60,19 @@ export const setPivot = (x, y) => element => {
 
 export const newElement = () => new PIXI.Graphics()
 
+export const newAnimation = (frames, speed, loop, onComplete) => {
+  const anim = new PIXI.extras.AnimatedSprite(frames)
+  anim.animationSpeed = speed
+  if (onComplete) {
+    anim.onComplete = onComplete
+  }
+  if (loop === false) {
+    anim.loop = loop === false ? false : true 
+  }
+  anim.play()
+  return anim
+}
+
 export const setScale = (x, y) => element => {
   element.scale.x = x
   element.scale.y = y
@@ -74,37 +85,22 @@ export const setupGameView = (gameSize, div) => {
     antialias: true,
   })
   div.appendChild(app.renderer.view)
-  return Graphic({
-    app,
-    div,
-  })
+  return Graphic({ app, div })
 }
 
 export const addChild = element => graphic => {
-  const state = graphic.getState()
-  state.app.stage.addChild(element)
-  return Graphic({ ...state })
+  graphic.getProp('app').map(app => app.stage.addChild(element))
+  return graphic
 }
 
 export const removeChild = element => graphic => {
-  const state = graphic.getState()
-  state.app.stage.removeChild(element)
-  return Graphic({ ...state })
+  graphic.getProp('app').map(app => app.stage.removeChild(element))
+  return graphic
 }
 
-export const attachCursor = graphic => {
-  const state = graphic.getState()
-  return Graphic({
-    ...state,
-  })
-}
+export const attachCursor = graphic => graphic
 
-export const dettachCursor = graphic => {
-  const state = graphic.getState()
-  return Graphic({
-    ...state,
-  })
-}
+export const dettachCursor = graphic => graphic
 
 export const spriteFromImage = image => PIXI.Sprite.fromImage(image)
 

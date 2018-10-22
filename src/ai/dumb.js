@@ -2,6 +2,7 @@ import { GAME_SIZE } from '_utils/constants'
 import { randomBetween } from '_utils/functions/helper'
 import Coordinate from '_models/coordinate'
 import { setDestination, setTarget } from '_models/spaceship/functions'
+import { getPropsAndMap, either } from '../utils/functions/maybe';
 
 const getMinX = movingAreaWidth => coordinate => {
   const maxXDistance = movingAreaWidth / 2
@@ -27,19 +28,19 @@ const getMaxY = movingAreaHeigth => coordinate => {
   return maxYDistance
 }
 
-const createDestination = spaceship => {
-  const { coordinate, speed, size } = spaceship.getState()
-  const scale = speed / 300
-  const movingAreaWidth = size.w() * scale
-  const movingAreaHeigth = size.h() * scale
-  const minX = getMinX(movingAreaWidth)(coordinate)
-  const maxX = getMaxX(movingAreaWidth)(coordinate)
-  const minY = getMinY(movingAreaHeigth)(coordinate)
-  const maxY = getMaxY(movingAreaHeigth)(coordinate)
-  const x = randomBetween(coordinate.x() - minX, coordinate.x() + maxX)
-  const y = randomBetween(coordinate.y() - minY, coordinate.y() + maxY)
-  return Coordinate(x, y)
-}
+const createDestination = spaceship =>
+    getPropsAndMap(spaceship)((coordinate, speed, size) => {
+      const scale = speed / 300
+      const movingAreaWidth = size.w() * scale
+      const movingAreaHeigth = size.h() * scale
+      const minX = getMinX(movingAreaWidth)(coordinate)
+      const maxX = getMaxX(movingAreaWidth)(coordinate)
+      const minY = getMinY(movingAreaHeigth)(coordinate)
+      const maxY = getMaxY(movingAreaHeigth)(coordinate)
+      const x = randomBetween(coordinate.x() - minX, coordinate.x() + maxX)
+      const y = randomBetween(coordinate.y() - minY, coordinate.y() + maxY)
+      return Coordinate(x, y)
+    })('coordinate', 'speed', 'size').flatten()
 
 export const selectSpaceshipDestination = spaceship => {
   const destination = createDestination(spaceship)

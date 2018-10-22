@@ -1,10 +1,11 @@
 import Coordinate from '_models/coordinate'
 import Size from '_models/size'
 import { X_AXIS, Y_AXIS, GAME_SIZE } from '_utils/constants'
+import { mapMaybes, getPropsAndMap } from './maybe';
 
 export const scaleSize = scale => size => Size(size.w() * scale, size.h() * scale)
 
-export const getRotation = actor => actor.getState().rotation
+export const getRotation = actor => either(actor.getProp('rotation'), 0)
 
 export const areEqualCoordinates = (coordinate1, coordinate2) =>
   coordinate1.x() === coordinate2.x() && coordinate1.y() === coordinate2.y()
@@ -51,15 +52,16 @@ export const move = (coordinate, destination) => {
 }
 
 
-export const checkOutBounds = el => {
-  const { coordinate, size } = el.getState()
-  return (
-    coordinate.x() + size.w() < 0 ||
-    coordinate.x() - size.w() > GAME_SIZE.w() ||
-    coordinate.y() + size.h() < 0 ||
-    coordinate.y() - size.h() > GAME_SIZE.h()
-  )
-}
+export const checkOutBounds = el => 
+  compose(
+    result => either(result, true),
+    getPropsAndMap(el)((coordinate, size) => {
+      coordinate.x() + size.w() < 0 ||
+      coordinate.x() - size.w() > GAME_SIZE.w() ||
+      coordinate.y() + size.h() < 0 ||
+      coordinate.y() - size.h() > GAME_SIZE.h()
+    })('coordinate', 'size')
+  )()
 
 const getClosestPoint = (unrotatedBulletPoint, spaceshipPoint, spaceshipSize) => {
   if (unrotatedBulletPoint < spaceshipPoint) {
@@ -75,22 +77,21 @@ const rotateCorners = (corner, angleSin, angleCos, coordinate) => {
   const cornerY = coordinate.y() + (corner[0] * angleSin + corner[1] * angleCos)
   return [cornerX, cornerY]
 }
-const getPolygonCorners = p => {
-  const polygonState = p.getState()
-  const halfWidth = polygonState.size.w() / 2
-  const halfHeight = polygonState.size.h() / 2
-  const angle = getRotation(p)
-  const angleSin = Math.sin(angle)
-  const angleCos = Math.cos(angle)
-  const { coordinate } = polygonState
-  const cRotateCorners = corner => rotateCorners(corner, angleSin, angleCos, coordinate)
-  return [
-    [halfWidth, halfHeight],
-    [halfWidth, -halfHeight],
-    [-halfWidth, halfHeight],
-    [-halfWidth, -halfHeight],
-  ].map(cRotateCorners)
-}
+const getPolygonCorners = p =>
+  getPropsAndMap(p)((size, coordinate) => {
+    const halfWidth = size.w() / 2
+    const halfHeight = size.h() / 2
+    const angle = getRotation(p)
+    const angleSin = Math.sin(angle)
+    const angleCos = Math.cos(angle)
+    const cRotateCorners = corner => rotateCorners(corner, angleSin, angleCos, coordinate)
+    return [
+      [halfWidth, halfHeight],
+      [halfWidth, -halfHeight],
+      [-halfWidth, halfHeight],
+      [-halfWidth, -halfHeight],
+    ].map(cRotateCorners)
+  })('size', 'coordinate').flatten()
 
 const polygonCornersReducer = (corners, polygon) => [...corners, getPolygonCorners(polygon)]
 
@@ -119,38 +120,34 @@ export const checkCollisionBetweenPolygons = (polygon1, polygon2) => {
   })
 }
 
-export const checkCollisionSquareCircle = square => {
-  const squareState = square.getState()
-  const squareCoordinate = squareState.coordinate
-  const squareSize = squareState.size
-  const squareRotation = getRotation(square)
+export const checkCollisionSquareCircle = square => circle => 
+  getPropsAndMap(square)((squareCoordinate, squareSize) => {
+    const squareRotation = getRotation(square)
+    
+    const squareCenterX = squareCoordinate.x()
+    const squareCenterY = squareCoordinate.y()
+  
+    const squareX = squareCenterX - squareSize.w() / 2
+    const squareY = squareCenterY - squareSize.h() / 2
 
-  const squareCenterX = squareCoordinate.x()
-  const squareCenterY = squareCoordinate.y()
+      getPropsAndMap(circle)((circleCoordinate, circleSize) => {
+        const unrotatedCircleX =
+          Math.cos(squareRotation) * (circleCoordinate.x() - squareCenterX) -
+          Math.sin(squareRotation) * (circleCoordinate.y() - squareCenterY) +
+          squareCenterX
 
-  const squareX = squareCenterX - squareSize.w() / 2
-  const squareY = squareCenterY - squareSize.h() / 2
-  return circle => {
-    const circleState = circle.getState()
-    const circleCoordinate = circleState.coordinate
-    const circleSize = circleState.size
-    const unrotatedCircleX =
-      Math.cos(squareRotation) * (circleCoordinate.x() - squareCenterX) -
-      Math.sin(squareRotation) * (circleCoordinate.y() - squareCenterY) +
-      squareCenterX
-    const unrotatedCircleY =
-      Math.sin(squareRotation) * (circleCoordinate.x() - squareCenterX) +
-      Math.cos(squareRotation) * (circleCoordinate.y() - squareCenterY) +
-      squareCenterY
+        const unrotatedCircleY =
+          Math.sin(squareRotation) * (circleCoordinate.x() - squareCenterX) +
+          Math.cos(squareRotation) * (circleCoordinate.y() - squareCenterY) +
+          squareCenterY
 
-    const closestX = getClosestPoint(unrotatedCircleX, squareX, squareSize.w())
-    const closestY = getClosestPoint(unrotatedCircleY, squareY, squareSize.h())
-
-    const distance = getDistance(
-      Coordinate(unrotatedCircleX, unrotatedCircleY),
-      Coordinate(closestX, closestY)
-    )
-
-    return distance < circleSize.w() / 2
-  }
-}
+        const closestX = getClosestPoint(unrotatedCircleX, squareX, squareSize.w())
+        const closestY = getClosestPoint(unrotatedCircleY, squareY, squareSize.h())
+    
+        const distance = getDistance(
+          Coordinate(unrotatedCircleX, unrotatedCircleY),
+          Coordinate(closestX, closestY)
+        )
+        return distance < circleSize.w() / 2
+      })('coordinate', 'size').flatten()
+  })('coordinate', 'size').flatten()

@@ -29,11 +29,3 @@ export const flatten = xs =>
 export const flow = (...args) => init => reduce(args, (memo, fn) => fn(memo), init)
 
 export const compose = (...args) => flow(...reverse(args))
-
-export const anyCompose = (...fns) => reduce(fns, (memo, fn) => memo || fn(), false)
-
-export const everyCompose = (...fns) => reduce(fns, (memo, fn) => memo && fn(), true)
-
-export const diff = arr1 => arr2 => arr1.filter(item => arr2.indexOf(item) < 0)
-
-export const emptyFn = () => {}

@@ -1,10 +1,12 @@
-import modelFunctions from '_utils/functions/model'
-import { emptyFn } from '_utils/functions/base'
+import { modelFunctions } from '_utils/functions/model'
 
-const Player = ({ onSelectSpaceship = emptyFn, spaceships = [], ...state }) => ({
-  ...modelFunctions({
-    onSelectSpaceship,
-    spaceships,
+const defaultState = {
+  spaceships: []
+}
+
+const Player = state => ({
+  ...modelFunctions(Player)({
+    ...defaultState,
     ...state,
   }),
 })

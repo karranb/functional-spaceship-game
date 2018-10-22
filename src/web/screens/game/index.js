@@ -17,6 +17,8 @@ import { getById } from '_utils/functions/helper'
 import { compose } from '_utils/functions/base'
 // import userSpaceshipImg from '_assets/images/spaceship/blue/blue-still.png'
 // import enemySpaceshipImg from '_assets/images/spaceship/red/red-still.png'
+import { isNothing } from '_utils/functions/maybe';
+
 
 import {
   onRotate,
@@ -55,43 +57,41 @@ export const startGame = (user, enemy) => {
   })
 
   const setupUser = player => {
-    const state = player.getState()
-    const spaceships = state.spaceships.map((spaceship, i) => {
-      const spaceshipGraphic = SpaceshipGraphic(spaceship)
-      addChild(spaceshipGraphic)(graphic)
-      return positionateSpaceship(USER_SPACESHIP_COORDINATES[i])(BOTTOM_RIGHT_ANGLE)(
-        Spaceship({
-          element: spaceshipGraphic,
-          ...spaceship.getState(),
+    const spaceships = player.getProp('spaceships').map(
+      spaceships => spaceships.map((spaceship, i) => {
+        const spaceshipGraphic = SpaceshipGraphic(spaceship)
+        addChild(spaceshipGraphic)(graphic)
+        const newSpaceship = spaceship.assignState({
           ...baseSpaceship.getState(),
+          element: spaceshipGraphic,
         })
-      )
-    })
-    return Player({
-      ...state,
-      spaceships,
-    })
+        return positionateSpaceship(USER_SPACESHIP_COORDINATES[i])(BOTTOM_RIGHT_ANGLE)(newSpaceship)
+      })
+    )
+    if (isNothing(spaceships)) {
+      return player
+    }
+    return player.assignState({ spaceships })
   }
 
   const setupEnemy = player => {
-    const state = player.getState()
-    const spaceships = state.spaceships.map((spaceship, i) => {
-      const spaceshipGraphic = SpaceshipGraphic(spaceship)
-      addChild(spaceshipGraphic)(graphic)
-      return positionateSpaceship(ENEMY_SPACESHIP_COORDINATES[i])(TOP_LEFT_ANGLE)(
-        Spaceship({
-          element: spaceshipGraphic,
-          ...spaceship.getState(),
+    const spaceships = player.getProp('spaceships').map(
+      spaceships => spaceships.map((spaceship, i) => {
+        const spaceshipGraphic = SpaceshipGraphic(spaceship)
+        addChild(spaceshipGraphic)(graphic)
+        const newSpaceship = spaceship.assignState({
           ...baseSpaceship.getState(),
+          element: spaceshipGraphic,
         })
-      )
-    })
-    return Player({
-      ...state,
-      spaceships,
-    })
+        return positionateSpaceship(ENEMY_SPACESHIP_COORDINATES[i])(TOP_LEFT_ANGLE)(newSpaceship)
+      })
+    )
+    if (isNothing(spaceships)) {
+      return player
+    }
+    return player.assignState({ spaceships })
   }
-
+ 
   newRound(
     Engine({
       players: [setupUser(user), setupEnemy(enemy)],

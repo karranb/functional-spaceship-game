@@ -48,6 +48,7 @@ module.exports = {
   ],
   resolve: {
     alias: {
+      _utils: path.resolve(__dirname, 'src/utils/'),
       // _buttons: path.resolve(__dirname, 'src/js/web/components/buttons/'),
       // _canvas: path.resolve(__dirname, 'src/js/web/components/canvas/'),
       _models: path.resolve(__dirname, 'src/models/'),
@@ -57,7 +58,6 @@ module.exports = {
       // _player: path.resolve(__dirname, 'src/js/models/player/'),
       // _spaceship: path.resolve(__dirname, 'src/js/models/spaceship/'),
       _web: path.resolve(__dirname, 'src/web'),
-      _utils: path.resolve(__dirname, 'src/utils/'),
       _assets: path.resolve(__dirname, 'src/web/assets/'),
       _components: path.resolve(__dirname, 'src/web/components/'),
     },
