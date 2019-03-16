@@ -15,7 +15,7 @@ export const reverse = xs => reduce(xs, (memo, x) => [x, ...memo], [])
 
 export const length = ([x, ...xs]) => (def(x) ? 1 + length(xs) : 0)
 
-export const map = (xs, fn) => reduce(xs, (memo, x) => [...memo, fn(x)], [])
+export const map = (xs, fn) => xs.map(fn)
 
 export const filter = (xs, fn) => reduce(xs, (memo, x) => (fn(x) ? [...memo, x] : [...memo]), [])
 

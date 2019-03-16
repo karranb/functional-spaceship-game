@@ -29,18 +29,18 @@ const getMaxY = movingAreaHeigth => coordinate => {
 }
 
 const createDestination = spaceship =>
-    getPropsAndMap(spaceship)((coordinate, speed, size) => {
-      const scale = speed / 300
-      const movingAreaWidth = size.w() * scale
-      const movingAreaHeigth = size.h() * scale
-      const minX = getMinX(movingAreaWidth)(coordinate)
-      const maxX = getMaxX(movingAreaWidth)(coordinate)
-      const minY = getMinY(movingAreaHeigth)(coordinate)
-      const maxY = getMaxY(movingAreaHeigth)(coordinate)
-      const x = randomBetween(coordinate.x() - minX, coordinate.x() + maxX)
-      const y = randomBetween(coordinate.y() - minY, coordinate.y() + maxY)
-      return Coordinate(x, y)
-    })('coordinate', 'speed', 'size').flatten()
+  spaceship.getPropsAndMap('coordinate', 'speed', 'size')((coordinate, speed, size) => {
+    const scale = speed / 300
+    const movingAreaWidth = size.w() * scale
+    const movingAreaHeigth = size.h() * scale
+    const minX = getMinX(movingAreaWidth)(coordinate)
+    const maxX = getMaxX(movingAreaWidth)(coordinate)
+    const minY = getMinY(movingAreaHeigth)(coordinate)
+    const maxY = getMaxY(movingAreaHeigth)(coordinate)
+    const x = randomBetween(coordinate.x() - minX, coordinate.x() + maxX)
+    const y = randomBetween(coordinate.y() - minY, coordinate.y() + maxY)
+    return Coordinate(x, y)
+  })
 
 export const selectSpaceshipDestination = spaceship => {
   const destination = createDestination(spaceship)

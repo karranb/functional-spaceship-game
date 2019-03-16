@@ -3,10 +3,7 @@ import {
   selectSpaceshipDestination as selectAISpaceshipDestination,
   selectSpaceshipTarget as selectAISpaceshipTarget,
 } from '_ai/dumb'
-import Engine from '_models/engine'
-import Player from '_models/player'
 import { isUser } from '_models/player/functions'
-import Spaceship from '_models/spaceship'
 import {
   addChild,
   rotate as rotateElement,
@@ -15,11 +12,11 @@ import {
   dettachCursor,
   newTicker,
 } from '_web/graphic'
-import Bullet from '_models/bullet'
+import { isStill } from '_models/spaceship/functions'
 import Path from '_web/components/spaceship/path'
 import MovingArea from '_web/components/spaceship/movingArea'
 import Target from '_web/components/spaceship/target'
-import { compose } from '_utils/functions/base'
+import { compose, map } from '_utils/functions/base'
 import { Bullet as BulletGraphic } from '_web/components/spaceship/bullet'
 import {
   getSelectedSpaceship,
@@ -44,216 +41,300 @@ import {
 
 
 import { Spaceship as SpaceshipGraphic, MovingSpaceship, ExplodingSpaceship } from '_web/components/spaceship'
-import { getPropsAndMap, either } from '_utils/functions/maybe';
+import { either } from '_utils/functions/maybe';
+import { getUser } from '../../../../models/engine/functions';
 
 
-/**
- * Controller Listeners
- */
+const mapMaybe = fn => maybe => maybe.map(fn)
+const assignState = state => element => element.assignState(state)
+const flip = fn => x => y => fn(y)(x)
+const getProp = prop => element => element.getProp(prop)
+const cEither = other => maybe => either(maybe, other)
 
-export const onSpaceshipSelect = spaceship => engine =>
+const removeSpaceshipGraphic = graphic => spaceship => compose(
+  () => assignState({ element: null })(spaceship),
+  mapMaybe(removeChild(graphic)),
+  getProp('element')
+)(spaceship)
+
+const createGraphicAndSetPosition = element => elementConstructor => coordinate => compose(
+  setPosition(coordinate),
+  elementConstructor
+)(element)
+
+const createAndAssignGraphic = graphic => elementConstructor => model =>
   compose(
-    deactivateReadyBtn,
-    deactivateSpaceshipsSelection,
-    selectSpaceship(spaceship)
-  )(engine)
+    element => model.assignState({ element }),
+    cEither(null),
+    mapMaybe(addChild(graphic)),
+    mapMaybe(createGraphicAndSetPosition(model)(elementConstructor)),
+    getProp('coordinate'),
+    removeSpaceshipGraphic(graphic),
+  )(model)
 
-export const onMovingAreaSelect = e => engine => {
-  const { x, y } = e.data.global
-  const destination = Coordinate(x, y)
-  return compose(
-    activateTargetSelection,
-    selectSpaceshipDestination(destination)
-  )(engine)
-}
 
-export const onTargetSelect = e => engine => {
-  const { x, y } = e.data.global
-  const targetCoordinate = Coordinate(x, y)
-  return compose(
-    activateSpaceshipsSelection,
-    deactivateTargetSelection,
-    selectSpaceshipTarget(targetCoordinate)
-  )(engine)
-}
+const getSpaceships = (spaceships, otherPlayer) => compose(
+  cEither(spaceships),
+  mapMaybe(otherSpaceships => ([
+    ...spaceships,
+    ...otherSpaceships,
+  ])),
+  getProp('spaceships')
+)(otherPlayer)
 
-/**
- * Bullet Listeners
- */
-//todo uncurry setposition or curry getProps and map
-export const onBulletMove = bullet => 
-  either(
-    getPropsAndMap(bullet)((coordinate, element) => setPosition(coordinate)(element))('coordinate', 'element'),
-    bullet
-  )
-
-export const onDestroyBullet = graphic => bullet => {
-  bullet.getProp('element').map(element => removeChild(element))(graphic)
-  return bullet
-}
-
-/**
- * Spaceship Listeners
- */
-
- export const onSpaceshipStop = graphic => spaceship => {
-  const newSpaceship = getPropsAndMap(spaceship)((isDestroyed, oldElement, coordinate) => {
-    if (isDestroyed) return spaceship
-    removeChild(oldElement)(graphic)
-    const element = setPosition(coordinate)(SpaceshipGraphic(spaceship))
-    addChild(element)(graphic)
-    return spaceship.assignState({ element })
-  })('isDestroyed', 'element', 'coordinate')
-  return either(newSpaceship, spaceship)
-}
-
-export const onRotate = spaceship => {
-  const newSpaceship = getPropsAndMap(spaceship)((rotation, element) => {
-    rotateElement(rotation)(element)
-  })('rotate', 'element')
-  return either(newSpaceship, spaceship) 
-}
-
-export const onSetCoordinate = spaceship => {
-  const newSpaceship = getPropsAndMap(spaceship)((coordinate, element) => {
-    setPosition(coordinate)(element)
-  })('coordinate', 'element')
-  return either(newSpaceship, spaceship)
-}
-
-export const onDestroySpaceship = graphic => spaceship => {
-  spaceship.getProp('element').map(element => removeChild(element)(graphic))
-  addChild(ExplodingSpaceship(spaceship)(graphic))(graphic)
-  return spaceship
-}
-
-/**
- * Engine Listeners
- */
+const AIFunctions = otherSpaceships => spaceship => compose(
+  selectAISpaceshipTarget(otherSpaceships),
+  selectAISpaceshipDestination
+)(spaceship)
 
 const setAIRoundStart = otherPlayers => player => {
-  const getSpaceships = (spaceships, otherPlayer) => either(
-    otherPlayer.getProp('spaceships').map(otherSpaceships => ([
-      ...spaceships,
-      ...otherSpaceships,
-    ])), spaceships)
-    
   const otherSpaceships = otherPlayers.reduce(getSpaceships, [])
-  const AIFunctions = compose(
-    selectAISpaceshipTarget(otherSpaceships),
-    selectAISpaceshipDestination
-  )
-  const spaceships = either(player.getProp('spaceships').map(spaceships => spaceships.map(AIFunctions)), [])
-  return player.assignState({ spaceships })
+  return compose(
+    spaceships => player.assignState({ spaceships }),
+    cEither([]),
+    mapMaybe(spaceships => spaceships.map(AIFunctions(otherSpaceships))),
+    getProp('spaceships')
+  )(player)
 }
+
+const removeSpaceshipTarget = graphic => spaceship => compose(
+  always(spaceship.assignState({ target: null })),
+  mapMaybe(removeChild(graphic)),
+  getProp('target')
+)(spaceship)
+
+const removeSpaceshipPath = graphic => spaceship => compose(
+  always(spaceship.assignState({ path: null })),
+  mapMaybe(removeChild(graphic)),
+  getProp('path')
+)(spaceship)
+
+const removeSpaceshipPathTarget = graphic => spaceship => compose(
+  removeSpaceshipPath(graphic),
+  removeSpaceshipTarget(graphic)
+)(spaceship)
+
+
+const addAndReturnElement = graphic => element => compose(
+  always(element),
+  addChild(graphic)
+)(element)
+
+const createSpaceshipBullet = graphic => bullet => compose(
+  element => bullet.assignState({ element, onMove: onBulletMove, onDestroy: onDestroyBullet(graphic) }),
+  addAndReturnElement(graphic),
+  BulletGraphic
+)(bullet)
+
+const createSpaceshipBullets = graphic => spaceship =>
+  compose(
+    bullets => spaceship.assignState({ bullets }),
+    cEither([]),
+    mapMaybe(bullets => bullets.map(bullet => createSpaceshipBullet(graphic)(bullet))),
+    getProp('bullets')
+  )(spaceship)
 
 const setRoundStartGraphics = graphic => player => {
-  const spaceships = player.getProp('spaceships').map(spaceships => spaceships.map(
-    spaceship => 
-      getPropsAndMap(spaceship)((target, path, bullets) => {
-        if (target) {
-          removeChild(target)(graphic)
-        }
-        if (path) {
-          removeChild(path)(graphic)
-        }
-        const newBullets = bullets.map(bullet => {
-          const element = BulletGraphic(bullet)
-          addChild(element)(graphic)
-          bullet.assignState({ element, onMove: onBulletMove, onDestroy: onDestroyBullet(graphic)})
-        })
-        const stoppedSpaceship = getPropsAndMap(player)((element, coordinate) => {
-          removeChild(element)(graphic)
-          const newElement = setPosition(coordinate)(MovingSpaceship(spaceship))
-          addChild(newElement)(graphic)
-          return spaceship.assignState({
-            path: null,
-            target: null,
-            bullets: newBullets,
-            element: newElement
-          })
-        })('element', 'coordinate', 'destination',  )
-        return either(
-          stoppedSpaceship,
-          spaceship.assignState({ path: null, target: null, bullets: newBullets })
-        )    
-      })('target', 'path', 'bullets')      
-  ))
-  if (isNothing(spaceships)) {
-    return player
-  }
-  return player.assignState({ spaceships })
+  const setSpaceshipRoundGraphic = compose(
+    spaceship => isStill(spaceship) ? spaceship : createAndAssignGraphic(graphic)(MovingSpaceship)(spaceship),
+    createSpaceshipBullets(graphic),
+    removeSpaceshipPathTarget(graphic),
+  )
+  return compose(
+    spaceships => player.assignState({ spaceships }),
+    cEither([]),
+    mapMaybe(spaceships => map(spaceships, setSpaceshipRoundGraphic)),
+    getProp('spaceships')
+  )(player)
 }
 
-export const onSetDestination = graphic => engine => {
-  const newEngine = engine.getProp('movingArea').map(movingArea => {
-    const newEngine = engine.assignState({ movingArea: null })
-    const spaceship = getSelectedSpaceship(newEngine)
-    const newSpaceship = either(spaceship.getProp('path').map(path => {
-      const newPath = Path(spaceship)
-      addChild(newPath)(graphic)
-      removeChild(path)(graphic)
-      return spaceship.assignState({ path: newPath })
-    }), spaceship)
-    removeChild(movingArea)(graphic)
-    return replaceSelectedSpaceship(newSpaceship)(newEngine)
+
+const updateTicker = engine => {
+  const newTicker = engine.getProp('ticker').map(ticker => {
+    ticker.update(performance.now())
+    // console.log(`FPS: ${ticker.FPS}`)
+    return ticker
   })
-  return either(newEngine, engine)
+  return engine.assignState({ ticker: newTicker})
 }
 
-export const onSelectSpaceship = graphic => spaceship => engine => {
-  const movingArea = MovingArea(spaceship)
-  addChild(movingArea)(graphic)
-  const newEngine = engine.assignState({ movingArea })
-  return activateMovingAreaSelection(movingArea)(newEngine)
+const removeMovingArea = graphic => engine => compose(
+  always(engine.assignState({ movingArea: null })),
+  mapMaybe(removeChild(graphic)),
+  getProp('movingArea'),
+)(engine)
+
+const createSpaceshipPath = graphic => spaceship =>
+  compose(
+    path => spaceship.assignState({ path }),
+    addChild(graphic),
+    Path
+  )(spaceship)
+
+const replaceSpaceshipPath = graphic =>
+  compose(
+    createSpaceshipPath(graphic),
+    removeSpaceshipPath(graphic),
+    getSelectedSpaceship
+  )
+
+const setPlayerStartGraphics = graphic => players => player => {
+  const startGraphicFn = setRoundStartGraphics(graphic)
+  if (isUser(player)) return startGraphicFn(player)
+  const otherPlayers = players.filter(otherPlayer => otherPlayer !== player)
+  return startGraphicFn(setAIRoundStart(otherPlayers)(player))
 }
+  
+const setPlayersStartGraphics = graphic => engine =>
+  compose(
+    cEither([]),
+    mapMaybe(players => map(players, setPlayerStartGraphics(graphic)(players))),
+    getProp('players')
+  )(engine)
+
+const createSpaceshipTarget = graphic => spaceship =>
+  compose(
+    target => spaceship.assignState({ target }),
+      addChild(graphic),
+      Target
+  )(spaceship)
+
+const replaceSpaceshipTarget = graphic => engine => compose(
+  createSpaceshipTarget(graphic),
+  removeSpaceshipTarget(graphic),
+  getSelectedSpaceship
+)(engine)
+
+const always = x => () => x
+
+const assignAndActivateMovingArea = engine => graphic => movingArea => compose(
+  activateMovingAreaSelection(movingArea)(graphic),
+  always(engine.assignState({ movingArea }))
+)(movingArea)
+
+export const onSelectSpaceship = graphic => spaceship => engine => compose(
+  assignAndActivateMovingArea(engine)(graphic),
+  addChild(graphic),
+  always(MovingArea(spaceship))
+)(engine)
 
 export const onStartUpdate = graphic => engine => {
   const ticker = newTicker()
-  const players = either(engine.getProp('players').map(players =>
-    players.map(player => {
-      if (isUser(player)) return setRoundStartGraphics(graphic)(player)
-      const otherPlayers = players.filter(otherPlayer => otherPlayer !== player)
-      return setRoundStartGraphics(graphic)(setAIRoundStart(otherPlayers)(player))
-    })
-  ), [])
-  return update(engine.assignState({ ticker, players }))
+  const players = setPlayersStartGraphics(graphic)(engine)
+  const newEngine = engine.assignState({ ticker, players })
+  return update(newEngine)
 }
 
-export const onSetTarget = graphic => engine => {
-  dettachCursor(graphic)
-  const spaceship = getSelectedSpaceship(engine)
-  const newSpaceship = either(
-    spaceship.getProp('target').map(target => {
-      if (target) {
-        removeChild(target)(graphic)
-      }
-      const newTarget = Target(spaceship)
-      addChild(newTarget)(graphic)
-      return spaceship.assignState({ target: newTarget })
-    }),
-    spaceship
-  )
-  return compose(
-    activateReadyBtn,
-    replaceSelectedSpaceship(newSpaceship),
-    activateSpaceshipsSelection,
-    deactivateTargetSelection
+
+/**
+ * @param Engine
+ */
+export const onUpdate = engine => 
+  compose(
+    engine => requestAnimationFrame(() => update(engine)),
+    updateTicker,
   )(engine)
-}
 
-export const onUpdate = engine => {
-  engine.getProp('ticker').map(ticker => {
-    ticker.update(performance.now())
-    // console.log(`FPS: ${ticker.FPS}`)
-  })
-  requestAnimationFrame(() => update(engine))
-}
-
+/**
+ *  Todo
+ * @param {*} engine 
+ */
 export const onGameEnd = engine => engine
 
+/**
+ * @param engine
+ */
 export const onNewRound = engine =>
   compose(
     activateReadyBtn,
     activateSpaceshipsSelection
   )(engine)
+  
+
+export const onSpaceshipSelect = spaceship =>
+  compose(
+    deactivateReadyBtn,
+    deactivateSpaceshipsSelection,
+    selectSpaceship(spaceship)
+  )
+
+export const onMovingAreaSelect = e => graphic => engine => {
+  const { x, y } = e.data.global
+  const destination = Coordinate(x, y)
+
+  return compose(
+    activateTargetSelection(graphic),
+    removeMovingArea(graphic),
+    spaceship => replaceSelectedSpaceship(spaceship)(engine),
+    replaceSpaceshipPath(graphic),
+    selectSpaceshipDestination(destination)
+  )(engine)
+}
+
+export const onTargetSelect = graphic => engine => e => {
+  const { x, y } = e.data.global
+  const targetCoordinate = Coordinate(x, y)
+  dettachCursor(graphic)
+
+  return compose(
+    activateReadyBtn,
+    activateSpaceshipsSelection,
+    deactivateTargetSelection,
+    flip(replaceSelectedSpaceship)(engine),
+    replaceSpaceshipTarget(graphic),
+    selectSpaceshipTarget(targetCoordinate)
+  )(engine)
+}
+
+
+/**
+ * Bullet Listeners
+ */
+export const onBulletMove = bullet =>
+  compose(
+    always(bullet),
+    bullet.getPropsAndMap('coordinate', 'element'),
+    always((coordinate, element) => {
+      return setPosition(coordinate)(element)
+    })
+  )()
+
+  
+export const onDestroyBullet = graphic => bullet => compose(
+  always(bullet),
+  mapMaybe(removeChild(graphic)),
+  getProp('element'),
+)(bullet)
+
+/**
+ * Spaceship Listeners
+ */
+export const onSpaceshipStop = graphic => spaceship => {
+  const isDestroyed = compose(
+    cEither(false),
+    getProp('isDestroyed')
+  )(spaceship)
+  if (isDestroyed) return spaceship
+  return createAndAssignGraphic(graphic)(SpaceshipGraphic)(spaceship) 
+}
+
+export const onRotate = spaceship => {
+  spaceship.getPropsAndMap('rotation', 'element')(
+    (rotation, element) => rotateElement(rotation)(element)
+  )
+  return spaceship
+}
+
+export const onSetCoordinate = spaceship => {
+  spaceship.getPropsAndMap('coordinate', 'element')(
+    (coordinate, element) => setPosition(coordinate)(element)
+  )
+  return spaceship
+}
+
+export const onDestroySpaceship = graphic => spaceship => compose(
+  always(spaceship),
+  always(createAndAssignGraphic(graphic)(ExplodingSpaceship(graphic))(spaceship)),
+  mapMaybe(removeChild(graphic)),
+  getProp('element')
+)(spaceship)

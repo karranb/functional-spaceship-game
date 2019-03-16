@@ -2,6 +2,8 @@ import Coordinate from '_models/coordinate'
 import Size from '_models/size'
 import { X_AXIS, Y_AXIS, GAME_SIZE } from '_utils/constants'
 import { mapMaybes, getPropsAndMap } from './maybe';
+import { either } from '_utils/functions/maybe'
+import { compose, map } from '_utils/functions/base'
 
 export const scaleSize = scale => size => Size(size.w() * scale, size.h() * scale)
 
@@ -19,7 +21,7 @@ export const getDistance = (coordinate1, coordinate2) => {
 export const getVelFactor = (coordinate1, coordinate2) => {
   const dist = getDistance(coordinate1, coordinate2)
   return axis => {
-    const tAxis = coordinate1[axis]() - coordinate2[axis]()
+    const tAxis =  coordinate2[axis]() - coordinate1[axis]()
     return tAxis / dist
   }
 }
@@ -32,35 +34,37 @@ export const getAngle = (coordinate1, coordinate2) => {
 
 export const move = (coordinate, destination) => {
   if (!destination) {
-    return () => Coordinate(coordinate.x(), coordinate.y())
+    return () => coordinate
   }
-  return vel => {
-    const curriedVelFactor = getVelFactor(coordinate, destination)
+  const curriedVelFactor = getVelFactor(coordinate, destination)
+  return (vel, currentCoordinate = coordinate) => {
+    if (areEqualCoordinates(destination, currentCoordinate)) {
+      return destination
+    }
     const velX = curriedVelFactor(X_AXIS) * vel
     const velY = curriedVelFactor(Y_AXIS) * vel
-
     const x =
-      Math.abs(coordinate.x() - velX - destination.x()) > vel
-        ? coordinate.x() - velX
+      Math.abs(Math.abs(currentCoordinate.x() + velX) - destination.x()) > Math.abs(velX)
+        ? currentCoordinate.x() + velX
         : destination.x()
     const y =
-      Math.abs(coordinate.y() - velY - destination.y()) > vel
-        ? coordinate.y() - velY
+      Math.abs(Math.abs(currentCoordinate.y() + velY) - destination.y()) > Math.abs(velY)
+        ? currentCoordinate.y() + velY
         : destination.y()
     return Coordinate(x, y)
   }
 }
 
 
-export const checkOutBounds = el => 
+export const checkOutBounds = el =>
   compose(
     result => either(result, true),
-    getPropsAndMap(el)((coordinate, size) => {
+    () => el.getPropsAndMap('coordinate', 'size')((coordinate, size) => 
       coordinate.x() + size.w() < 0 ||
       coordinate.x() - size.w() > GAME_SIZE.w() ||
       coordinate.y() + size.h() < 0 ||
       coordinate.y() - size.h() > GAME_SIZE.h()
-    })('coordinate', 'size')
+    )
   )()
 
 const getClosestPoint = (unrotatedBulletPoint, spaceshipPoint, spaceshipSize) => {
@@ -77,8 +81,8 @@ const rotateCorners = (corner, angleSin, angleCos, coordinate) => {
   const cornerY = coordinate.y() + (corner[0] * angleSin + corner[1] * angleCos)
   return [cornerX, cornerY]
 }
-const getPolygonCorners = p =>
-  getPropsAndMap(p)((size, coordinate) => {
+const getPolygonCorners = p => 
+  p.getPropsAndMap('size', 'coordinate')((size, coordinate) => {
     const halfWidth = size.w() / 2
     const halfHeight = size.h() / 2
     const angle = getRotation(p)
@@ -91,7 +95,7 @@ const getPolygonCorners = p =>
       [-halfWidth, halfHeight],
       [-halfWidth, -halfHeight],
     ].map(cRotateCorners)
-  })('size', 'coordinate').flatten()
+  })
 
 const polygonCornersReducer = (corners, polygon) => [...corners, getPolygonCorners(polygon)]
 
@@ -120,8 +124,8 @@ export const checkCollisionBetweenPolygons = (polygon1, polygon2) => {
   })
 }
 
-export const checkCollisionSquareCircle = square => circle => 
-  getPropsAndMap(square)((squareCoordinate, squareSize) => {
+export const checkCollisionSquareCircle = square => circle => {
+  return square.getPropsAndMap('coordinate', 'size')((squareCoordinate, squareSize) => {
     const squareRotation = getRotation(square)
     
     const squareCenterX = squareCoordinate.x()
@@ -130,7 +134,7 @@ export const checkCollisionSquareCircle = square => circle =>
     const squareX = squareCenterX - squareSize.w() / 2
     const squareY = squareCenterY - squareSize.h() / 2
 
-      getPropsAndMap(circle)((circleCoordinate, circleSize) => {
+    return circle.getPropsAndMap('coordinate', 'size')((circleCoordinate, circleSize) => {
         const unrotatedCircleX =
           Math.cos(squareRotation) * (circleCoordinate.x() - squareCenterX) -
           Math.sin(squareRotation) * (circleCoordinate.y() - squareCenterY) +
@@ -149,5 +153,7 @@ export const checkCollisionSquareCircle = square => circle =>
           Coordinate(closestX, closestY)
         )
         return distance < circleSize.w() / 2
-      })('coordinate', 'size').flatten()
-  })('coordinate', 'size').flatten()
+      })
+  })
+
+}

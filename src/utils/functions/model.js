@@ -1,4 +1,4 @@
-import { Maybe } from '_utils/functions/maybe' 
+import { Maybe, getPropsAndMap } from '_utils/functions/maybe'
 
 export const getState = state => state
 
@@ -16,4 +16,5 @@ export const modelFunctions = constructor => state => ({
   assignState: addition => assignState(constructor)(state)(addition),
   getProp: name => getProp(state)(name),
   getProps: (...names) => getProps(state)(...names),
+  getPropsAndMap: (...props) => fn => getPropsAndMap(state)(...props)(fn),
 })

@@ -10,6 +10,7 @@ module.exports = {
     rules: [
       {
         test: /\.js$/,
+        exclude: /(node_modules|bower_components)/,
         use: [
           {
             loader: 'babel-loader',
@@ -46,6 +47,9 @@ module.exports = {
       allChunks: true,
     }),
   ],
+  // watch: true,
+  // Development Tools (Map Errors To Source File)
+  devtool: 'source-map',
   resolve: {
     alias: {
       _utils: path.resolve(__dirname, 'src/utils/'),

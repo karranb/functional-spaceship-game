@@ -1,17 +1,34 @@
 import { compose } from '_utils/functions/base'
 import { newElement, drawCircle, setPosition } from '_web/graphic'
-import { mapMaybes } from '_utils/functions/maybe';
-import { getPropsAndMap } from '../../../../utils/functions/maybe';
+import { either } from '_utils/functions/maybe';
 
-export const Bullet = bullet => {
-  const bulletColor = 0x0b0b5d
-  return compose(
-    result => either(result, newElement),
-    getPropsAndMap(bullet)((size, coordinate) => compose(
-        setPosition(coordinate),
-        drawCircle(bulletColor, size),
-        newElement
-      )
-    )('size', 'coordinate')
-  )()
-}
+const mapMaybe = fn => maybe => maybe.map(fn)
+const flip = fn => x => y => fn(y)(x)
+const getProp = prop => element => element.getProp(prop)
+const cEither = other => maybe => either(maybe, other)
+
+const bulletColor = 0x0b0b5d
+
+const setBulletPosition = bullet => element =>
+  compose(
+    cEither(element),
+    mapMaybe(flip(setPosition)(element)),
+    getProp('coordinate')
+  )(bullet)
+
+const drawBulletCircle = size => compose(
+  drawCircle(bulletColor, size),
+  newElement
+)()
+
+const createBullet = bullet => compose(
+  cEither(newElement()),
+  mapMaybe(drawBulletCircle),
+  getProp('size')
+)(bullet)
+
+export const Bullet = bullet =>
+  !bullet ? null : compose(
+    setBulletPosition(bullet),
+    createBullet
+  )(bullet)

@@ -1,40 +1,81 @@
 import Coordinate from '_models/coordinate'
 import { checkCollisionSquareCircle } from '_utils/functions/spatial'
 import { mapMaybes, either } from '_utils/functions/maybe'
+import { compose, map } from '_utils/functions/base'
+import { reduce } from '../../utils/functions/base';
 
+const getProp = prop => element => element.getProp(prop)
+const cEither = other => maybe => either(maybe, other)
+const assignState = state => element => element.assignState(state)
+const always = x => () => x
+const useWith = (useFunc, withFuncs) => (...args) => useFunc(...withFuncs.map((withFunc, i) => withFunc(args[i])))
+const getPropsAndMap = element => (...args) => fn => element.getPropsAndMap(...args)(fn)
 /**
  * Set a position to the bullet
  */
-const setPosition = coordinate => bullet => {
-  const newBullet = bullet.assignState({ coordinate })
-  return either(
-    newBullet.getProp('onMove').apply(newBullet).flatten(),
-    newBullet
-  )
-}
+
+const callListenerIfExist = listenerName => (...args) => model => 
+  compose(
+    cEither(model),
+    maybeFn => maybeFn.apply(...args),
+    getProp(listenerName)
+  )(model)
+
+const setPosition = coordinate => bullet =>
+  compose(
+    newBullet => callListenerIfExist('onMove')(newBullet)(newBullet),
+    assignState({ coordinate })
+  )(bullet)
 
 /**
  * Calc the bullet new position and set it
  */
-const calcAndSetPosition = bullet => (coordinate, velX, velY) => {
-  const x = coordinate.x() - velX
-  const y = coordinate.y() - velY
-  return setPosition(Coordinate(x, y))(bullet)
-}
+
+const setCoordinateToBullet = bullet => (x, y) => compose(
+  setCoordinate => setCoordinate(bullet),
+  setPosition,
+  always(Coordinate(x, y)),
+)()
+
+
+const cCalcAndSetPosition = bullet => coordinate => useWith(
+  setCoordinateToBullet(bullet),
+  [
+    velX => coordinate.x() + velX,
+    velY => coordinate.y() + velY,
+  ]
+)
+
+const calcAndSetPosition = bullet => (coordinate, velX, velY) => cCalcAndSetPosition(bullet)(coordinate)(velX, velY)
 
 /**
  * Update the bullet state
  */
-export const update = bullet =>
-  either(
-    getPropsAndMap(bullet)(calcAndSetPosition(bullet))('coordinate', 'velX', 'velY').flatten(),
-    bullet
-  )
+
+export const update = bullet => compose(
+  cEither(bullet),
+  getPropsAndMap(bullet)('coordinate', 'velX', 'velY'),
+  calcAndSetPosition
+)(bullet)
+
+// export const update = bullet => either(
+//   bullet.getPropsAndMap('coordinate', 'velX', 'velY')(calcAndSetPosition(bullet)),
+//   bullet
+// )
+
+// getPropsAndMap(bullet)('coordinate', 'velX', 'velY')(calcAndSetPosition)
 
 /**
  * Check bullet collisions
  */
-export const checkCollisions = spaceships => bullet => {
-  const curriedCheckCollision = spaceship => checkCollisionSquareCircle(spaceship)(bullet)
-  return spaceships.some(curriedCheckCollision) && bullet.getProp('onDestroy').apply(bullet).flatten()
-}
+
+const flippedCheckCollision =  circle => square =>  checkCollisionSquareCircle(square)(circle)
+
+export const checkCollisions = spaceships => bullet => spaceships.some(flippedCheckCollision(bullet)) && callListenerIfExist('onDestroy')(bullet)(bullet)
+
+
+
+// export const checkCollisions = spaceships => bullet => {
+//   const curriedCheckCollision = spaceship => checkCollisionSquareCircle(spaceship)(bullet)
+//   return spaceships.some(curriedCheckCollision) && bullet.getProp('onDestroy').apply(bullet).flatten()
+// }

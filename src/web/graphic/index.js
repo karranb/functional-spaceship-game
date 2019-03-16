@@ -64,7 +64,7 @@ export const newAnimation = (frames, speed, loop, onComplete) => {
   const anim = new PIXI.extras.AnimatedSprite(frames)
   anim.animationSpeed = speed
   if (onComplete) {
-    anim.onComplete = onComplete
+    anim.onComplete = onComplete(anim)
   }
   if (loop === false) {
     anim.loop = loop === false ? false : true 
@@ -88,14 +88,14 @@ export const setupGameView = (gameSize, div) => {
   return Graphic({ app, div })
 }
 
-export const addChild = element => graphic => {
+export const addChild = graphic => element =>  {
   graphic.getProp('app').map(app => app.stage.addChild(element))
-  return graphic
+  return element
 }
 
-export const removeChild = element => graphic => {
+export const removeChild = graphic => element => {
   graphic.getProp('app').map(app => app.stage.removeChild(element))
-  return graphic
+  return element
 }
 
 export const attachCursor = graphic => graphic

@@ -1,20 +1,51 @@
 import Size from '_models/size'
 import { compose } from '_utils/functions/base'
 import { newElement, setPivot, drawCircle, setAlpha, setPosition } from '_web/graphic'
-import { mapMaybes, getPropsAndMap, either } from '../../../../utils/functions/maybe';
+import { either } from '_utils/functions/maybe'
 
-const MovingArea = spaceship =>
+const mapMaybe = fn => maybe => maybe.map(fn)
+const flip = fn => x => y => fn(y)(x)
+const getProp = prop => element => element.getProp(prop)
+const cEither = other => maybe => either(maybe, other)
+
+const getScale = spaceship => compose(
+  cEither(0),
+  mapMaybe(speed => speed / 300), 
+  getProp('speed')
+)(spaceship)
+
+const setAreaPivot = element => setPivot(.5, .5)(element)
+
+const setAreaPosition = spaceship => element =>
   compose(
-    result => either(result, newElement),
-    getPropsAndMap(spaceship)((size, speed, coordinate) => {
-      const scale = speed / 300
-      return compose(
-        setPosition(coordinate),
-        drawCircle(0xffffff, Size(size.w() * scale, size.h() * scale)),
-        setAlpha(0.3),
-        setPivot(size.w() / 2, size.h() / 2),
-        newElement
-      )})('size', 'speed', 'coordinate')
-  )()
+    cEither(element),
+    mapMaybe(flip(setPosition)(element)),
+    getProp('coordinate')
+  )(spaceship)
+
+const calcAreaSize = spaceship => spaceshipSize => compose(
+  scale => Size(spaceshipSize.w() * scale, spaceshipSize.h() * scale),
+  getScale,
+)(spaceship)
+
+const drawMovingArea = spaceship => size => compose(
+  setAlpha(0.3),
+  setAreaPosition(spaceship),
+  setAreaPivot,
+  drawCircle(0xffffff, size),
+  newElement
+)()
+
+const getSpaceshipSizeAndDraw = spaceship => compose(
+  mapMaybe(drawMovingArea(spaceship)),
+  mapMaybe(calcAreaSize(spaceship)),
+  getProp('size')
+)(spaceship)
+
+const MovingArea = spaceship => 
+  compose(
+    cEither(newElement()),
+    getSpaceshipSizeAndDraw
+  )(spaceship)
 
 export default MovingArea
