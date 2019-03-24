@@ -4,11 +4,12 @@ import { mapMaybes, either } from '_utils/functions/maybe'
 import { compose, map } from '_utils/functions/base'
 import { reduce } from '../../utils/functions/base';
 
+const cMap = fn => arg => map(arg, fn)
 const getProp = prop => element => element.getProp(prop)
 const cEither = other => maybe => either(maybe, other)
 const assignState = state => element => element.assignState(state)
 const always = x => () => x
-const useWith = (useFunc, withFuncs) => (...args) => useFunc(...withFuncs.map((withFunc, i) => withFunc(args[i])))
+const useWith = (useFunc, withFuncs) => (...args) => useFunc(...cMap((withFunc, i) => withFunc(args[i]))(withFuncs))
 const getPropsAndMap = element => (...args) => fn => element.getPropsAndMap(...args)(fn)
 /**
  * Set a position to the bullet
@@ -17,7 +18,7 @@ const getPropsAndMap = element => (...args) => fn => element.getPropsAndMap(...a
 const callListenerIfExist = listenerName => (...args) => model => 
   compose(
     cEither(model),
-    maybeFn => maybeFn.apply(...args),
+    cMap(fn => fn(...args)),
     getProp(listenerName)
   )(model)
 

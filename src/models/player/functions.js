@@ -22,7 +22,10 @@ const getProp = prop => element => element.getProp ? element.getProp(prop) : May
 const cEither = other => maybe => either(maybe, other)
 const always = x => () => x
 
-
+const find = fn => array => array.find(fn)
+const filter = fn => array => array.filter(fn)
+const every = fn => array => array.every(fn)
+const diff = arg1 => arg2 => arg1 !== arg2
 
 const getSpaceships = player => compose(
   cEither([]),
@@ -33,12 +36,22 @@ const getSpaceships = player => compose(
 /**
  * return player's selected spaceship
  */
-export const getSelected = player => getSpaceships(player).find(isSelected)
+export const getSelected = player => 
+  compose(
+    find(isSelected),
+    getSpaceships
+  )(player)
+// getSpaceships(player).find(isSelected)
 
 /**
  * return player's unselected spaceships
  */
-const getUnselected = player => getSpaceships(player).filter(isNotSelected)
+const getUnselected = player => 
+  compose(
+    filter(isNotSelected),
+    getSpaceships
+  )(player)
+// getSpaceships(player).filter(isNotSelected)
 
 /**
  * return players' spaceships
@@ -51,7 +64,11 @@ const getPlayersSpaceships = players => players.reduce(reduceGetSpaceships, [])
  * return players' spaceships, beside the current one
  */
 const getOtherSpaceships = players => spaceship =>
-  getPlayersSpaceships(players).filter(item => item !== spaceship)
+  compose(
+    filter(diff(spaceship)),
+    getPlayersSpaceships
+  )(players)
+  // getPlayersSpaceships(players).filter(item => item !== spaceship)
 
 
 /**
@@ -82,16 +99,30 @@ export const replaceSelected = player => selectedSpaceship =>
 /**
  * disselect player spaceships and select one
  */
-export const selectSpaceship = spaceship => player => {
-  const playerOtherSpaceships = getSpaceships(player).filter(sp => sp !== spaceship).map(disselect)
-  const spaceships = [...playerOtherSpaceships, select(spaceship)]
-  return player.assignState({ spaceships })
-}
+export const selectSpaceship = spaceship => player =>
+  compose(
+    spaceships => player.assignState({ spaceships }),
+    otherSpaceships => [...otherSpaceships, select(spaceship)],
+    filter(diff(spaceship)),
+    getSpaceships
+  )(player)
+
+
+// {
+//   const playerOtherSpaceships = getSpaceships(player).filter(sp => sp !== spaceship).map(disselect)
+//   const spaceships = [...playerOtherSpaceships, select(spaceship)]
+//   return player.assignState({ spaceships })
+// }
 
 /**
  * return true if the player spaceships are ready
  */
-export const isReady = player => getSpaceships(player).every(isSpaceshipReady)
+export const isReady = player => 
+  compose(
+    every(isSpaceshipReady),
+    getSpaceships
+  )(player)
+// getSpaceships(player).every(isSpaceshipReady)
 
 
 /**
@@ -106,16 +137,28 @@ export const update = player => compose(
 /**
  * Process player elements collisions
  */
-export const processCollisions = player => players => {
-  const cGetOtherSpaceships = getOtherSpaceships(players)
 
-  const processCollisionsWithOthers = spaceship =>
-    processSpaceshipCollisions(cGetOtherSpaceships(spaceship))(spaceship)
-  const spaceships = getSpaceships(player).map(processCollisionsWithOthers)
-  return player.assignState({ spaceships })
-}
 
-const getAliveSpaceships = player => getSpaceships(player).filter(isAlive)
+
+export const processCollisions = player => players =>
+  compose(
+    processCollisionWithOthers => compose(
+      spaceships => player.assignState({ spaceships }),
+      spaceships => map(spaceships, processCollisionWithOthers),
+      getSpaceships
+    )(player),
+    getPlayerOtherSpaceships => spaceship => processSpaceshipCollisions(getPlayerOtherSpaceships(spaceship))(spaceship),
+    getOtherSpaceships
+  )(players)
+
+
+const getAliveSpaceships = player =>
+  compose(
+    filter(isAlive),
+    getSpaceships
+  )(player)
+
+// getSpaceships(player).filter(isAlive)
 
 /**
  * remove destroyed spaceships from player listx

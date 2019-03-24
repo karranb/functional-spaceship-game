@@ -17,7 +17,7 @@ import { mapMaybes, isNothing, Maybe, either, getPropsAndMap } from '_utils/func
 import { compose, map } from '_utils/functions/base';
 
 
-const mapMaybe = fn => maybe => map(maybe, fn) 
+const cMap = fn => maybe => map(maybe, fn) 
 const assignState = state => element => element.assignState(state)
 const flip = fn => x => y => fn(y)(x)
 const getProp = prop => element => element.getProp ? element.getProp(prop) : Maybe(element[prop])
@@ -71,7 +71,7 @@ const noDestinationOrStopped = spaceship => coordinate =>
 export const isStill = spaceship =>
   compose(
     flatten,
-    mapMaybe(noDestinationOrStopped(spaceship)),
+    cMap(noDestinationOrStopped(spaceship)),
     assertIsNotNothing('No Coordinate'),
     getProp('coordinate')
   )(spaceship)
@@ -102,16 +102,16 @@ export const destroy = spaceship =>
 /**
  * reduce the spaceship shield
  */
-export const reduceShield = damage => spaceship => {
-  const destroyOrReduce = shield =>
+const destroyOrReduce = damage => spaceship => shield =>
     shield > 0 ? spaceship.assignState({ shield: shield - damage }) : destroy(spaceship)
-  return compose(
+
+export const reduceShield = damage => spaceship =>
+  compose(
     flatten,
-    mapMaybe(destroyOrReduce),
+    cMap(destroyOrReduce(damage)(spaceship)),
     assertIsNotNothing('No Shield'),
     getProp('shield')
   )(spaceship)
-}
   
 
 /**
@@ -138,7 +138,7 @@ export const setTarget = target => spaceship =>
       targetCoordinate: target,
     }),
     flatten,
-    mapMaybe(coordinate => Bullet({
+    cMap(coordinate => Bullet({
       coordinate,
       destination: target,
       power: 300,
@@ -164,19 +164,18 @@ export const setCoordinate = coordinate => spaceship =>
 export const setDestination = destination => spaceship =>
   compose(
     cEither('spaceship'),
-    mapMaybe(coordinate => {
-      const tx = destination.x() - coordinate.x()
-      const ty = destination.y() - coordinate.y()
-      return compose(
-        rotate(Math.atan2(ty, tx)),
+    cMap(coordinate =>
+      compose(
+        rotate(Math.atan2(
+          destination.y() - coordinate.y(),
+          destination.x() - coordinate.x()
+        )),
         assignState({ destination })
       )(spaceship)
-    }),
+    ),
     assertIsNotNothing('No Coordinate'),
     getProp('coordinate')
   )(spaceship)
-
-
 
 
 /**
@@ -206,8 +205,8 @@ export const isNotSelected = spaceship => !isSelected(spaceship)
 
 const updateBullets = spaceship => compose(
   cEither(spaceship),
-  mapMaybe(bullets => spaceship.assignState({ bullets })),
-  mapMaybe(bullets => bullets.map(updateBullet)),
+  cMap(bullets => spaceship.assignState({ bullets })),
+  cMap(cMap(updateBullet)),
   getProp('bullets')
 )(spaceship)
 
@@ -228,7 +227,7 @@ const updateSpaceshipCoordinate = spaceship =>
     currentSpaceship => currentSpaceship.getPropsAndMap('coordinate', 'destination')(getNewPositionAndMove(currentSpaceship)),
   )(spaceship)
 
-  /**
+/**
  * update the spaceship and its bullets state
  */
 export const update = spaceship => compose(
@@ -259,26 +258,55 @@ const processCollisionWithSpaceship = spaceship => otherSpaceship => {
  */
 const processCollisionsWithBullets = (spaceship, bullet) =>
   isAlive(spaceship) && checkCollisionSquareCircle(spaceship)(bullet)
-    ? either(bullet.getProp('power').map(power => reduceShield(power)(spaceship)).flatten(), spaceship)
+    ? compose(
+        cEither(spaceship),
+        cMap(power => reduceShield(power)(spaceship)),
+        getProp('power')
+      )(bullet)
     : spaceship
+
+// const flatten = maybe => maybe.flatten()
+
+const filter = fn => array => array.filter(fn)
 
 /**
  * process collisions between spaceship with other's spaceships and bullets
  */
 export const processCollisions = otherSpaceships => spaceship => {
-  const otherAliveSpaceships = otherSpaceships.filter(isAlive)
-  const isOnTrack = bullet =>
-    !checkBulletCollisions(otherAliveSpaceships)(bullet) && !checkOutBounds(bullet)
-  const oldBullets = either(spaceship.getProp('bullets'), [])
-  const bullets = oldBullets.filter(isOnTrack)
+  return compose(
+    bulletsProcessedSpaceship => compose(
+      processSpaceshipCollisions => otherSpaceships.reduce(processSpaceshipCollisions, bulletsProcessedSpaceship),
+      (unprocessedSpaceship, otherSpaceship) => compose(
+        processSpaceshipCollisions(processSpaceship, otherSpaceship),
+        flatten,
+        cMap(bullets => bullets.reduce(processCollisionsWithBullets, unprocessedSpaceship)),
+        cEither([]),
+        getProp('bullets')
+      )(otherSpaceship),
+    ),
+    bullets => spaceship.assignState({ bullets }),
+    isOnTrack => compose(
+      filter(isOnTrack),
+      cEither([]),
+      getProp('bullets')
+    )(spaceship),
+    otherAliveSpaceships => bullet => !checkBulletCollisions(otherAliveSpaceships)(bullet) && !checkOutBounds(bullet).
+    filter(isAlive)
+  )(otherSpaceships)
 
-  const processSpaceshipCollisions = (unprocessedSpaceship, otherSpaceship) => {
-    const processedSpaceship = otherSpaceship.getProp('bullets').map(
-      bullets => bullets.reduce(processCollisionsWithBullets, unprocessedSpaceship)
-    ).flatten()
-    return processCollisionWithSpaceship(processedSpaceship)(otherSpaceship)
-  }
+  // const otherAliveSpaceships = otherSpaceships.filter(isAlive)
+  // const isOnTrack = bullet =>
+  //   !checkBulletCollisions(otherAliveSpaceships)(bullet) && !checkOutBounds(bullet)
+  // const oldBullets = either(spaceship.getProp('bullets'), [])
+  // const bullets = oldBullets.filter(isOnTrack)
 
-  const spaceshipWithProcessedBullets = spaceship.assignState({ bullets })
-  return otherSpaceships.reduce(processSpaceshipCollisions, spaceshipWithProcessedBullets)
+  // const processSpaceshipCollisions = (unprocessedSpaceship, otherSpaceship) => {
+  //   const processedSpaceship = otherSpaceship.getProp('bullets').map(
+  //     bullets => bullets.reduce(processCollisionsWithBullets, unprocessedSpaceship)
+  //   ).flatten()
+  //   return processCollisionWithSpaceship(processedSpaceship)(otherSpaceship)
+  // }
+
+  // const spaceshipWithProcessedBullets = spaceship.assignState({ bullets })
+  // return otherSpaceships.reduce(processSpaceshipCollisions, spaceshipWithProcessedBullets)
 }

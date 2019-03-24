@@ -15,7 +15,7 @@ import {
 import { compose, map } from '_utils/functions/base'
 
 import Engine from './index'
-import { either } from '../../utils/functions/maybe';
+import { either, Maybe } from '../../utils/functions/maybe';
 
 const mapMaybe = fn => maybe => map(maybe, fn) 
 const assignState = state => element => element.assignState(state)
@@ -220,17 +220,20 @@ export const selectSpaceshipDestination = destination => engine =>
     getUser
   )(engine)
 
+const callSelectSpaceshipListner = spaceship => engine =>
+  compose(
+    always(engine),
+    mapMaybe(fn => fn(spaceship)(engine)),
+    getProp('onSelectSpaceship')
+  )(engine)
 
 /**
  * set a user spaceship as selected
  */
-export const selectSpaceship = spaceship => engine => {
-  const newEngine = compose(
+export const selectSpaceship = spaceship => engine => 
+  compose(
+    callSelectSpaceshipListner(spaceship),
     updateUser(engine),
     selectUserSpaceship(spaceship),
     getUser
   )(engine)
-  // newEngine.getProp('onSelectSpaceship').apply(spaceship)(newEngine)
-  newEngine.getProp('onSelectSpaceship').map(fn => fn(spaceship)(newEngine))
-  return newEngine
-}
