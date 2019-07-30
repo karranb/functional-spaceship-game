@@ -19,7 +19,7 @@ import {
   processSpaceshipCollisions,
 } from '_models/spaceship/functions'
 import CollisionsIndex from '_models/collisions-index'
-import { compose, map, reduce, hashedFns } from '_utils/base'
+import { compose, map, reduce, hashedFns, curry } from '_utils/base'
 import { add } from '_utils/math'
 import { or, gte, lte, fEither } from '_utils/logic'
 import { filter, find, length, every } from '_utils/array'
@@ -82,12 +82,12 @@ const setNewRoundState = (round, players) => engine =>
   compose(
     newEngine =>
       hashedFns({
-        true: always(callListenerIfExist('onGameEnd')(newEngine)),
-        false: always(callListenerIfExist('onNewRound')(newEngine)),
+        true: () => callListenerIfExist('onGameEnd')(newEngine),
+        false: () => callListenerIfExist('onNewRound')(newEngine),
       })(or(gte(round, MAX_ROUNDS), isLengthLteOne(players))),
     assignState({
       round: getRoundAndIncrement(engine),
-      players: getRemanainingSpaceships(engine),
+      players,
     })
   )(engine)
 
@@ -134,29 +134,31 @@ const applyCollisions = players => collisions =>
     )(player)
   )
 
-const processPlayersCollisions = players =>
+const processPlayersCollisions = curry((engine, players) =>
   compose(
     applyCollisions(players),
     spaceships =>
       reduce(
         (collisionsIndex, spaceship) =>
-          processSpaceshipCollisions(collisionsIndex, spaceship, spaceships),
+          processSpaceshipCollisions(collisionsIndex, spaceship, spaceships, engine),
         CollisionsIndex(),
         spaceships
       ),
     getPlayersSpaceships
   )(players)
-
-const getUpdatedPlayers = compose(
-  fEither([]),
-  map(
-    compose(
-      processPlayersCollisions,
-      map(updatePlayer)
-    )
-  ),
-  getProp('players')
 )
+
+const getUpdatedPlayers = engine =>
+  compose(
+    fEither([]),
+    map(
+      compose(
+        processPlayersCollisions(engine),
+        map(updatePlayer)
+      )
+    ),
+    getProp('players')
+  )(engine)
 
 const arePlayersReady = every(isReady)
 

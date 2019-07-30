@@ -6,10 +6,8 @@ import { compose, curry } from '_utils/base'
 import { flip, callListenerIfExist } from '_utils/helper'
 import { add, mult } from '_utils/math'
 import { fEither } from '_utils/logic'
-import { assignState, getPropsAndMap } from '_utils/model'
+import { assignState, getObjPropsAndMap, getPropsAndMap } from '_utils/model'
 import { some } from '_utils/array'
-
-import Bullet from './index'
 
 /**
  * Set a position to the bullet
@@ -31,15 +29,15 @@ const calcAndSetPositionFn = (bullet, coordinate, velX, velY) =>
 
 const calcAndSetPosition = curry(calcAndSetPositionFn)
 
-export const calcVel = state => (coordinate, destination) =>
+export const calcVel = (state, constructor) =>
   compose(getAxisFactor =>
-    Bullet({
+    constructor({
       ...state,
       size: BULLET_SIZE,
       velX: mult(getAxisFactor(X_AXIS), BULLET_SPEED),
       velY: mult(getAxisFactor(Y_AXIS), BULLET_SPEED),
     })
-  )(getVelFactor(coordinate, destination))
+  )(getObjPropsAndMap(state)('coordinate', 'destination')(getVelFactor))
 
 /**
  * Update the bullet state
@@ -54,9 +52,9 @@ export const update = bullet =>
 /**
  * Check bullet collisions
  */
-const checkCollisionCircleSquare = flip(checkCollisionSquareCircle)
+// const checkCollisionCircleSquare = flip(checkCollisionSquareCircle)
 
-export const checkCollisions = curry(
-  (spaceships, bullet) =>
-    some(checkCollisionCircleSquare(bullet), spaceships) && callListenerIfExist('onDestroy')(bullet)
-)
+// export const checkCollisions = curry(
+//   (spaceships, bullet) =>
+//     some(checkCollisionCircleSquare(bullet), spaceships) && callListenerIfExist('onDestroy')(bullet)
+// )

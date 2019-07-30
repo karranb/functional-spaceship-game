@@ -9,12 +9,12 @@ import {
 } from './functions'
 
 const CollisionsIndex = (collisionsIndex = new Map()) => ({
-  setBulletCollisionIndex: setBulletCollisionIndex(collisionsIndex),
+  setBulletCollisionIndex: setBulletCollisionIndex(collisionsIndex, CollisionsIndex),
   hasBulletCollided: hasBulletCollided(collisionsIndex),
   getSpaceshipSpaceshipsCollisions: getSpaceshipSpaceshipsCollisions(collisionsIndex),
   getSpaceshipBulletsCollisions: getSpaceshipBulletsCollisions(collisionsIndex),
-  setSpaceshipsCollisionsIndexes: setSpaceshipsCollisionsIndexes(collisionsIndex),
-  setSpaceshipBulletCollision: setSpaceshipBulletCollision(collisionsIndex),
+  setSpaceshipsCollisionsIndexes: setSpaceshipsCollisionsIndexes(collisionsIndex, CollisionsIndex),
+  setSpaceshipBulletCollision: setSpaceshipBulletCollision(collisionsIndex, CollisionsIndex),
   getSpaceshipCollisionIndex: getSpaceshipsCollisionIndex(collisionsIndex),
 })
 

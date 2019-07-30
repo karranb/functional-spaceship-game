@@ -1,5 +1,5 @@
+/* global requestAnimationFrame */
 /* eslint-disable no-param-reassign */
-
 import * as PIXI from 'pixi.js'
 
 import { modelFunctions } from '_utils/model'
@@ -91,10 +91,10 @@ export const setupGameView = (gameSize, div) => {
   return Graphic({ app, div })
 }
 
-export const addChild = graphicController => graphic => {
+export const addChild = curry((graphicController, graphic) => {
   graphicController.getProp('app').map(app => app.stage.addChild(graphic))
   return graphic
-}
+})
 
 export const removeChild = graphicController => graphic => {
   graphicController.getProp('app').map(app => app.stage.removeChild(graphic))
@@ -149,3 +149,5 @@ export const newTicker = () => {
   ticker.stop()
   return ticker
 }
+
+export const requestFrame = fn => requestAnimationFrame(fn)

@@ -1,10 +1,9 @@
-/* global requestAnimationFrame */
 import {
   selectSpaceshipDestination as selectAISpaceshipDestination,
   selectSpaceshipTarget as selectAISpaceshipTarget,
 } from '_ai/dumb'
 import { isUser } from '_models/player/functions'
-import { addChild, setPosition, removeChild, newTicker } from '_web/graphic'
+import { addChild, setPosition, requestFrame, removeChild, newTicker } from '_web/graphic'
 import { isStill } from '_models/spaceship/functions'
 import { compose, map, reduce, hashedFns } from '_utils/base'
 import { Bullet as BulletGraphic } from '_web/components/spaceship/bullet'
@@ -15,7 +14,7 @@ import { assignState, getProp } from '_utils/model'
 import { always } from '_utils/helper'
 import { add, div } from '_utils/math'
 
-import { activateSpaceshipsSelection, activateReadyBtn } from '../controller'
+import { activateSpaceshipsSelection, activateReadyBtn, deactivateReadyBtn } from '../controller'
 
 import { onBulletMove, onDestroyBullet } from './bullet'
 
@@ -168,23 +167,24 @@ const setPlayerStartGraphics = graphicController => players => player => {
   return startGraphicFn(setAIRoundStart(otherPlayers)(player))
 }
 
-const setPlayersStartGraphics = graphicController => engine =>
+const setPlayersStartGraphics = (graphicController, engine) =>
   compose(
     fEither([]),
     map(players => map(setPlayerStartGraphics(graphicController)(players), players)),
     getProp('players')
   )(engine)
 
-export const onStartUpdate = graphicController => engine => {
-  const ticker = newTicker()
-  const players = setPlayersStartGraphics(graphicController)(engine)
-  const newEngine = engine.assignState({ ticker, players })
-  return update(newEngine)
-}
+export const onStartUpdate = engine =>
+  compose(
+    update,
+    players => deactivateReadyBtn(engine).assignState({ ticker: newTicker(), players }),
+    map(graphicController => setPlayersStartGraphics(graphicController, engine)),
+    getProp('graphicController')
+  )(engine)
 
 export const onUpdate = engine =>
   compose(
-    newEngine => requestAnimationFrame(() => update(newEngine)),
+    newEngine => requestFrame(() => update(newEngine)),
     updateTicker
   )(engine)
 

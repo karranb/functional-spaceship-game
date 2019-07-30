@@ -5,6 +5,7 @@ module.exports = {
   entry: ['./src/index.js', './src/web/assets/style/index.css'],
   output: {
     filename: './bundle.js',
+    webassemblyModuleFilename: '[modulehash].wasm',
   },
   module: {
     rules: [
@@ -14,6 +15,10 @@ module.exports = {
         use: {
           loader: 'babel-loader',
         },
+      },
+      {
+        test: /\.wasm$/,
+        type: 'webassembly/experimental',
       },
       {
         test: /\.css$/,
