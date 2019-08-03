@@ -115,39 +115,6 @@ export const checkCollisionBetweenPolygonsWrapper = (p1, p2, fn) => {
   )
 }
 
-  //  !!fn(725.5566826373586, 436.34261239075454, 44.7, 32.9, -2.632066273251114, 50, 120, 44.7, 32.9, 0.7853981633974483)
-  // p1.getPropsAndMap('coordinate', 'size')((p1Coordinate, p1Size) =>
-  //   p2.getPropsAndMap('coordinate', 'size')(
-  //     (p2Coordinate, p2Size) => {
-  //       console.log(
-  //         p1Coordinate.x(),
-  //         p1Coordinate.y(),
-  //         p1Size.w(),
-  //         p1Size.h(),
-  //         getRotation(p1),
-  //         p2Coordinate.x(),
-  //         p2Coordinate.y(),
-  //         p2Size.w(),
-  //         p2Size.h(),
-  //         getRotation(p2)
-          
-  //       )
-  //       return !!fn(
-  //         p1Coordinate.x(),
-  //         p1Coordinate.y(),
-  //         p1Size.w(),
-  //         p1Size.h(),
-  //         getRotation(p1),
-  //         p2Coordinate.x(),
-  //         p2Coordinate.y(),
-  //         p2Size.w(),
-  //         p2Size.h(),
-  //         getRotation(p2)
-          
-  //       )}
-  //   )
-  // )
-
 export const checkCollisionSquareCircleWrapper = (square, circle, fn) => {
   const squareState = square.getState()
   const circleState = circle.getState()
@@ -162,65 +129,47 @@ export const checkCollisionSquareCircleWrapper = (square, circle, fn) => {
     getRotation(square)
   )
 }
-//   !!fn(
-//     648.8863191248821, 431.8909176819665, 7, 733.8384227010583, 387.9248608322364, 44.7, 32.9, 2.6856932376467744
-//     )
-// //   square.getPropsAndMap('coordinate', 'size')((squareCoordinate, squareSize) =>
-//     circle.getPropsAndMap('coordinate', 'size')(
-//       (circleCoordinate, circleSize) => {
-//         console.log(          circleCoordinate.x(),
-//         circleCoordinate.y(),
-//         circleSize.w(),
-//         squareCoordinate.x(),
-//         squareCoordinate.y(),
-//         squareSize.w(),
-//         squareSize.h(),
-//         getRotation(square)
-// )
-//         return         !!fn(
-//           circleCoordinate.x(),
-//           circleCoordinate.y(),
-//           circleSize.w(),
-//           squareCoordinate.x(),
-//           squareCoordinate.y(),
-//           squareSize.w(),
-//           squareSize.h(),
-//           getRotation(square)
-//         )
 
-//       }
-//     )
-//   )
+const getUnrotatedCircleX = (squareRotation, circleX, circleY, squareX, squareY) =>
+  add(
+    sub(
+      mult(Math.cos(squareRotation), sub(circleX, squareX)),
+      mult(Math.sin(squareRotation), sub(circleY, squareY))
+    ),
+    squareX
+  )
+
+const getUnrotatedCircleY = (squareRotation, circleX, circleY, squareX, squareY) =>
+  add(
+    add(
+      mult(Math.sin(squareRotation), sub(circleX, squareX)),
+      mult(Math.cos(squareRotation), sub(circleY, squareY))
+    ),
+    squareY
+  )
 
 export const checkCollisionSquareCircle = (
   cx,
   cy,
   cw,
-  squareCenterX,
-  squareCenterY,
+  squareX,
+  squareY,
   squareSizeW,
   squareSizeH,
   squareRotation
 ) => {
-  const squareX = squareCenterX - squareSizeW / 2
-  const squareY = squareCenterY - squareSizeH / 2
+  const squareCenterX = sub(squareX, div(squareSizeW, 2))
+  const squareCenterY = sub(squareY, div(squareSizeH, 2))
 
-  const unrotatedCircleX =
-    Math.cos(squareRotation) * (cx - squareCenterX) -
-    Math.sin(squareRotation) * (cy - squareCenterY) +
-    squareCenterX
+  const unrotatedCircleX = getUnrotatedCircleX(squareRotation, cx, cy, squareX, squareY)
+  const unrotatedCircleY = getUnrotatedCircleY(squareRotation, cx, cy, squareX, squareY)
 
-  const unrotatedCircleY =
-    Math.sin(squareRotation) * (cx - squareCenterX) +
-    Math.cos(squareRotation) * (cy - squareCenterY) +
-    squareCenterY
-
-  const closestX = getClosestPoint(unrotatedCircleX, squareX, squareSizeW)
-  const closestY = getClosestPoint(unrotatedCircleY, squareY, squareSizeH)
+  const closestX = getClosestPoint(unrotatedCircleX, squareCenterX, squareSizeW)
+  const closestY = getClosestPoint(unrotatedCircleY, squareCenterY, squareSizeH)
 
   const distance = getDistance(
     Coordinate(unrotatedCircleX, unrotatedCircleY),
     Coordinate(closestX, closestY)
   )
-  return distance < cw / 2
+  return lt(distance, div(cw, 2))
 }
