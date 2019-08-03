@@ -26,11 +26,6 @@ export const checkOutBounds = el =>
     () => el.getPropsAndMap('coordinate', 'size')(isOutBounds)
   )()
 
-// const rotateCorners = (corner, angleSin, angleCos, coordinate) => [
-//   add(coordinate.x(), sub(mult(corner[0], angleCos), mult(corner[1], angleSin))),
-//   add(coordinate.y(), add(mult(corner[0], angleSin), mult(corner[1], angleCos))),
-// ]
-
 const changeSignal = x => mult(x, -1)
 
 const createCorners = (halfWidth, halfHeight) => [
@@ -40,41 +35,20 @@ const createCorners = (halfWidth, halfHeight) => [
   [changeSignal(halfWidth), changeSignal(halfHeight)],
 ]
 
-// const createCornersRotateFn = (p, coord) =>
-//   compose(
-//     angle => corner => rotateCorners(corner, Math.sin(angle), Math.cos(angle), coord),
-//     getRotation
-//   )(p)
-
 const rotateCorners = (corner, angleSin, angleCos, cx, cy) => [
   add(cx, sub(mult(corner[0], angleCos), mult(corner[1], angleSin))),
   add(cy, add(mult(corner[0], angleSin), mult(corner[1], angleCos))),
 ]
-
-// const getPolygonCorners = p =>
-//   p.getPropsAndMap('size', 'coordinate')((size, coordinate) =>
-//     compose(
-//       map(createCornersRotateFn(p, coordinate)),
-//       () => createCorners(div(size.h(), 2), div(size.w(), 2))
-//     )()
-//   )
-
 const getPolygonCorners = (px, py, pw, ph, pr) =>
   map(
     corner => rotateCorners(corner, Math.sin(pr), Math.cos(pr), px, py),
     createCorners(pw / 2, ph / 2)
   )
 
-// {
-
-// }
-
-const polygonCornersReducer = (corners, polygon) => [...corners, getPolygonCorners(polygon)]
-
 const cornersToLinesReducer = (polygonsLines, corners) =>
   compose(
     polygonLines => [...polygonsLines, polygonLines],
-    map((line, i) => [line, getModItem(corners, i)])
+    map((line, i) => [line, getModItem(corners, i + 1)])
   )(corners)
 
 const between01 = x => and(gt(x, 0), lt(x, 1))
@@ -107,27 +81,11 @@ export const checkCollisionBetweenPolygons = (p1X, p1Y, p1W, p1H, p1R, p2X, p2Y,
     compose(([lines1, lines2]) =>
       lines1.some(l1 => {
         const l1LinePoints = getLinePoints(l1)
-        // console.log(1, l1LinePoints)
-        // debugger
         return lines2.some(l2 => checkPointsCollisions(l1LinePoints, getLinePoints(l2)))
       })
     ),
-    // _ => {
-    //   console.log(0, _)
-    //   return _
-    // },
     reduce(cornersToLinesReducer)([]),
-    // reduce(polygonCornersReducer)([])
     () => [getPolygonCorners(p1X, p1Y, p1W, p1H, p1R), getPolygonCorners(p2X, p2Y, p2W, p2H, p2R)]
-    // _ => {
-    //   console.log(
-    //     'x', _[0].getState().coordinate.x(),
-    //     'y', _[0].getState().coordinate.y(),
-    //     'w', _[0].getState().size.w(),
-    //     'h', _[0].getState().size.h(),
-    //     'r', getRotation(_[0])
-    //   )
-    // }
   )()
 
 const getClosestPoint = (unrotatedBulletPoint, spaceshipPoint, spaceshipSize) =>
@@ -140,41 +98,99 @@ const getClosestPoint = (unrotatedBulletPoint, spaceshipPoint, spaceshipSize) =>
       })(gt(unrotatedBulletPoint, add(spaceshipPoint, spaceshipSize))),
   })(lt(unrotatedBulletPoint, spaceshipPoint))
 
-export const checkCollisionBetweenPolygonsWrapper = (p1, p2, fn) =>
-  p1.getPropsAndMap('coordinate', 'size')((p1Coordinate, p1Size) =>
-    p2.getPropsAndMap('coordinate', 'size')(
-      (p2Coordinate, p2Size) =>
-        !!fn(
-          p1Coordinate.x(),
-          p1Coordinate.y(),
-          p1Size.w(),
-          p1Size.h(),
-          getRotation(p1),
-          p2Coordinate.x(),
-          p2Coordinate.y(),
-          p2Size.w(),
-          p2Size.h(),
-          getRotation(p2)
-        )
-    )
+export const checkCollisionBetweenPolygonsWrapper = (p1, p2, fn) => {
+  const p1State = p1.getState()
+  const p2State = p2.getState()
+  return !!fn(
+    p1State.coordinate.x(),
+    p1State.coordinate.y(),
+    p1State.size.w(),
+    p1State.size.h(),
+    getRotation(p1),
+    p2State.coordinate.x(),
+    p2State.coordinate.y(),
+    p2State.size.w(),
+    p2State.size.h(),
+    getRotation(p2)
   )
+}
 
-export const checkCollisionSquareCircleWrapper = (square, circle, fn) =>
-  square.getPropsAndMap('coordinate', 'size')((squareCoordinate, squareSize) =>
-    circle.getPropsAndMap('coordinate', 'size')(
-      (circleCoordinate, circleSize) =>
-        !!fn(
-          circleCoordinate.x(),
-          circleCoordinate.y(),
-          circleSize.w(),
-          squareCoordinate.x(),
-          squareCoordinate.y(),
-          squareSize.w(),
-          squareSize.h(),
-          getRotation(square)
-        )
-    )
+  //  !!fn(725.5566826373586, 436.34261239075454, 44.7, 32.9, -2.632066273251114, 50, 120, 44.7, 32.9, 0.7853981633974483)
+  // p1.getPropsAndMap('coordinate', 'size')((p1Coordinate, p1Size) =>
+  //   p2.getPropsAndMap('coordinate', 'size')(
+  //     (p2Coordinate, p2Size) => {
+  //       console.log(
+  //         p1Coordinate.x(),
+  //         p1Coordinate.y(),
+  //         p1Size.w(),
+  //         p1Size.h(),
+  //         getRotation(p1),
+  //         p2Coordinate.x(),
+  //         p2Coordinate.y(),
+  //         p2Size.w(),
+  //         p2Size.h(),
+  //         getRotation(p2)
+          
+  //       )
+  //       return !!fn(
+  //         p1Coordinate.x(),
+  //         p1Coordinate.y(),
+  //         p1Size.w(),
+  //         p1Size.h(),
+  //         getRotation(p1),
+  //         p2Coordinate.x(),
+  //         p2Coordinate.y(),
+  //         p2Size.w(),
+  //         p2Size.h(),
+  //         getRotation(p2)
+          
+  //       )}
+  //   )
+  // )
+
+export const checkCollisionSquareCircleWrapper = (square, circle, fn) => {
+  const squareState = square.getState()
+  const circleState = circle.getState()
+  return !!fn(
+    circleState.coordinate.x(),
+    circleState.coordinate.y(),
+    circleState.size.w(),
+    squareState.coordinate.x(),
+    squareState.coordinate.y(),
+    squareState.size.w(),
+    squareState.size.h(),
+    getRotation(square)
   )
+}
+//   !!fn(
+//     648.8863191248821, 431.8909176819665, 7, 733.8384227010583, 387.9248608322364, 44.7, 32.9, 2.6856932376467744
+//     )
+// //   square.getPropsAndMap('coordinate', 'size')((squareCoordinate, squareSize) =>
+//     circle.getPropsAndMap('coordinate', 'size')(
+//       (circleCoordinate, circleSize) => {
+//         console.log(          circleCoordinate.x(),
+//         circleCoordinate.y(),
+//         circleSize.w(),
+//         squareCoordinate.x(),
+//         squareCoordinate.y(),
+//         squareSize.w(),
+//         squareSize.h(),
+//         getRotation(square)
+// )
+//         return         !!fn(
+//           circleCoordinate.x(),
+//           circleCoordinate.y(),
+//           circleSize.w(),
+//           squareCoordinate.x(),
+//           squareCoordinate.y(),
+//           squareSize.w(),
+//           squareSize.h(),
+//           getRotation(square)
+//         )
+
+//       }
+//     )
+//   )
 
 export const checkCollisionSquareCircle = (
   cx,

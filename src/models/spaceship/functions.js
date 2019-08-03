@@ -277,9 +277,6 @@ const checkCollisionBetweenSpaceships = (collisionsIndex, spaceship, otherSpaces
     return collisionsIndex.setSpaceshipsCollisionsIndexes(spaceship, otherSpaceship, hasCollision)
   })
 
-// {
-// }
-
 const checkBulletsCollision = (collisions, spaceship, bullets, engine) =>
   engine.getProp('checkCollisionSquareCircle').map(fn =>
     forEach(bullet => {

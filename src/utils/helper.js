@@ -43,7 +43,7 @@ export const timed = (name, fn) => {
 }
 
 export const supportWasm = () => {
-  return false
+  // return false
   try {
     if (typeof WebAssembly === 'object' && typeof WebAssembly.instantiate === 'function') {
       const module = new WebAssembly.Module(

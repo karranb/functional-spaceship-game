@@ -117,6 +117,10 @@ export const startGame = (user, enemy) => {
         3.0879396496560054
       )
     )
+    timed('between circle polygon without wasm', () => 
+    checkCollisionSquareCircle(746.6235756902234, 447.85529515309213, 7, 678.115569015112, 449.32998517688486, 44.7, 32.9, -2.7999795574029207))
+    timed('between circle polygon with wasm', () => 
+    wasm.checkCollisionSquareCircle(746.6235756902234, 447.85529515309213, 7, 678.115569015112, 449.32998517688486, 44.7, 32.9, -2.7999795574029207))
     newRound(
       Engine({
         players: [
