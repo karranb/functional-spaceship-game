@@ -1,19 +1,7 @@
 #include <math.h>
 #include <stdbool.h>
-// #include <stdlib.h>
-// #include <stdio.h>
 
 #define WASM_EXPORT __attribute__((visibility("default")))
-
-// WASM_EXPORT
-// int main() {
-//   return 42;
-// }
-
-
-
-#define WASM_EXPORT __attribute__((visibility("default")))
-
 
 double getClosestPoint(double unrotatedBulletPoint, double spaceshipPoint, double spaceshipSize) {
   if (unrotatedBulletPoint < spaceshipPoint) {
@@ -40,67 +28,25 @@ bool checkCollisionSquareCircle(double cX, double cY, double cW, double sX, doub
 }
 
 void rotateCorner(double px, double py, double cx, double cy, double angleSin, double angleCos, double * corners) {
-  // double * corners = (double *)malloc(2 * sizeof(double));
   corners[0] = px + (cx * angleCos) - (cy * angleSin);
   corners[1] = py + (cx + angleSin) + (cy * angleCos);
-  // return corners;
 }
-
-// double *** createLines(double px, double py, double halfWidth, double halfHeight, double pr, double ** lines) {
-//   double angleSin = sin(pr);
-//   double angleCos = cos(pr);
-//   // double **corners = (double **)malloc(4 * 2 * sizeof(double *));
-//   double corner0[2];
-//   double corner1[2];
-//   double corner2[2];
-//   double corner3[2];
-//   corners[0] = rotateCorner(px, py, halfWidth, halfHeight, angleSin, angleCos, corner0);
-//   corners[1] = rotateCorner(px, py, halfWidth, -halfHeight, angleSin, angleCos, corner1);
-//   corners[2] = rotateCorner(px, py, -halfWidth, halfHeight, angleSin, angleCos, corner2);
-//   corners[3] = rotateCorner(px, py, -halfWidth, -halfHeight, angleSin, angleCos, corner3);
-//   int i;
-//   for (i = 0; i < 4; i++) {
-//     double *line[2];
-//     line[0] = corners[i];
-//     line[1] = corners[(i + 1) % 4];
-//     lines[i] = line;
-//   }
-//   return lines;
-// }
 
 void createLines(double px, double py, double halfWidth, double halfHeight, double pr, double lines[4][2][2], double corners[4][2]) {
   double angleSin = sin(pr);
   double angleCos = cos(pr);
-
-  // double corner0[2];
-  // double corner1[2];
-  // double corner2[2];
-  // double corner3[2];
-  // double corners[4];
-  //   corner0, corner1, corner2, corner3
-  // };
-  // double corners = 
   rotateCorner(px, py, halfWidth, halfHeight, angleSin, angleCos, corners[0]);
   rotateCorner(px, py, halfWidth, -halfHeight, angleSin, angleCos, corners[1]);
   rotateCorner(px, py, -halfWidth, halfHeight, angleSin, angleCos, corners[2]);
   rotateCorner(px, py, -halfWidth, -halfHeight, angleSin, angleCos, corners[3]);
   int i;
   for (i = 0; i < 4; i++) {
-    // double line[2];
-    // double line1[2] = corners[i];
-    // double line2[2] = corners[(i + 1) % 4];
-    // line[1] = 
-    // lines[i][0] = line1;
-    // lines[i][1] = line2;
     lines[i][0][0] = corners[i][0];
     lines[i][0][1] = corners[i][1];
     lines[i][1][0] = corners[(i + 1) % 4][0];
     lines[i][1][1] = corners[(i + 1) % 4][1];
-    
-    // line;
   }
 }
-
 
 double getDet(double * p1, double * p2) {
   return ((p1[2] - p1[0]) * (p2[1] - p2[3])) - ((p2[0] - p2[2]) * (p1[3] - p1[1]));
@@ -127,7 +73,6 @@ double checkCollisionBetweenPolygons(
   double p1X, double p1Y, double p1W, double p1H, double p1R,
   double p2X, double p2Y, double p2W, double p2H, double p2R
 ) {
-  // double lines1
   double lines1[4][2][2];
   double corners1[4][2];
   double lines2[4][2][2];
@@ -154,8 +99,3 @@ double checkCollisionBetweenPolygons(
   }
   return false;
 }
-
-// int main() {
-//   printf("%f\n", );
-//   return 0;
-// }

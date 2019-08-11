@@ -26,13 +26,12 @@ export const checkOutBounds = el =>
     () => el.getPropsAndMap('coordinate', 'size')(isOutBounds)
   )()
 
-const changeSignal = x => mult(x, -1)
 
 const createCorners = (halfWidth, halfHeight) => [
   [halfWidth, halfHeight],
-  [halfWidth, changeSignal(halfHeight)],
-  [changeSignal(halfWidth), halfHeight],
-  [changeSignal(halfWidth), changeSignal(halfHeight)],
+  [halfWidth, -halfHeight],
+  [-halfWidth, halfHeight],
+  [-halfWidth, -halfHeight],
 ]
 
 const rotateCorners = (corner, angleSin, angleCos, cx, cy) => [

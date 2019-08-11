@@ -1,13 +1,11 @@
 import Coordinate from '_models/coordinate'
-import { checkCollisionSquareCircle } from '_utils/collision'
 import { getVelFactor } from '_utils/spatial'
 import { X_AXIS, Y_AXIS, BULLET_SPEED, BULLET_SIZE } from '_utils/constants'
 import { compose, curry } from '_utils/base'
-import { flip, callListenerIfExist } from '_utils/helper'
+import { callListenerIfExist } from '_utils/helper'
 import { add, mult } from '_utils/math'
 import { fEither } from '_utils/logic'
 import { assignState, getObjPropsAndMap, getPropsAndMap } from '_utils/model'
-import { some } from '_utils/array'
 
 /**
  * Set a position to the bullet
@@ -48,13 +46,3 @@ export const update = bullet =>
     getPropsAndMap(bullet)('coordinate', 'velX', 'velY'),
     calcAndSetPosition
   )(bullet)
-
-/**
- * Check bullet collisions
- */
-// const checkCollisionCircleSquare = flip(checkCollisionSquareCircle)
-
-// export const checkCollisions = curry(
-//   (spaceships, bullet) =>
-//     some(checkCollisionCircleSquare(bullet), spaceships) && callListenerIfExist('onDestroy')(bullet)
-// )
