@@ -111,11 +111,15 @@ const assignAndActivateMovingArea = engine => graphicController => movingArea =>
     always(engine.assignState({ movingArea }))
   )(movingArea)
 
-export const onSelectSpaceship = graphicController => spaceship => engine =>
+export const onSelectSpaceship = spaceship => engine =>
   compose(
-    assignAndActivateMovingArea(engine)(graphicController),
-    addChild(graphicController),
-    always(MovingArea(spaceship)),
+    map(graphicController =>
+      compose(
+        assignAndActivateMovingArea(engine)(graphicController),
+        addChild(graphicController)
+      )(MovingArea(spaceship))
+    ),
+    getProp('graphicController'),
     deactivateReadyBtn,
     deactivateSpaceshipsSelection
   )(engine)

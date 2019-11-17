@@ -51,10 +51,10 @@ export const getPropsAndMap = element => (...args) => fn => element.getPropsAndM
 
 export const getProp = arg => element => element.getProp(arg)
 
-export const modelFunctions = constructor => state => ({
+export const modelFunctions = curry((constructor, state) => ({
   getState: () => getState(state),
   assignState: addition => assignModelState(constructor, state, addition),
   getProp: name => getObjProp(name, state),
   getProps: (...names) => getObjProps(state)(...names),
   getPropsAndMap: (...props) => fn => getObjPropsAndMap(state)(...props)(fn),
-})
+}))

@@ -13,7 +13,10 @@ import {
 } from '_utils/constants'
 import { either } from '_utils/logic'
 import { getById } from '_utils/dom'
-import { compose } from '_utils/base'
+import { compose, map } from '_utils/base'
+import { getProp } from '_utils/model'
+import { supportWasm, timed } from '_utils/helper'
+import { checkCollisionSquareCircle, checkCollisionBetweenPolygons } from '_utils/collision'
 
 import {
   onRotate,
@@ -39,17 +42,17 @@ export const startGame = (user, enemy) => {
   const background = Background()
   addChild(graphicController)(background)
 
-  const positionateSpaceship = coordinate => degrees =>
+  const positionateSpaceship = (coordinate, degrees) =>
     compose(
       rotate(degrees),
       setCoordinate(coordinate)
     )
 
   const positionateUserSpaceship = i =>
-    positionateSpaceship(USER_SPACESHIP_COORDINATES[i])(BOTTOM_RIGHT_ANGLE)
+    positionateSpaceship(USER_SPACESHIP_COORDINATES[i], BOTTOM_RIGHT_ANGLE)
 
   const positionateEnemySpaceship = i =>
-    positionateSpaceship(ENEMY_SPACESHIP_COORDINATES[i])(TOP_LEFT_ANGLE)
+    positionateSpaceship(ENEMY_SPACESHIP_COORDINATES[i], TOP_LEFT_ANGLE)
 
   const spaceshipListeners = {
     onRotate,
@@ -73,32 +76,72 @@ export const startGame = (user, enemy) => {
 
   const eitherSpaceships = spaceships => either(spaceships, [])
 
-  const setupSpaceships = positionateFn =>
+  const setupPlayerSpaceships = positionateFn =>
     compose(
       eitherSpaceships,
-      player =>
-        player
-          .getProp('spaceships')
-          .map(spaceships => spaceships.map(setupSpaceship(positionateFn)))
+      map(map(setupSpaceship(positionateFn))),
+      getProp('spaceships')
     )
 
-  const setupPlayer = positionateFn => player => {
-    const spaceships = setupSpaceships(positionateFn)(player)
-    return player.assignState({ spaceships })
-  }
-
-  const setupUser = setupPlayer(positionateUserSpaceship)
-  const setupEnemy = setupPlayer(positionateEnemySpaceship)
-  newRound(
-    Engine({
-      players: [setupUser(user), setupEnemy(enemy)],
-      onSelectSpaceship: onSelectSpaceship(graphicController),
-      background,
-      readyBtnId,
-      onStartUpdate: onStartUpdate(graphicController),
-      onUpdate,
-      onGameEnd,
-      onNewRound,
-    })
-  )
+  const setupPlayer = (positionateFn, player) =>
+    compose(
+      spaceships => player.assignState({ spaceships }),
+      setupPlayerSpaceships(positionateFn)
+    )(player)
+  import('_web/webassembly').then(wasm => {
+    timed('between polygons without wasm', () =>
+      checkCollisionBetweenPolygons(
+        748.0028779543477,
+        450.1072545326296,
+        44.7,
+        32.9,
+        3.0879396496560054,
+        748.0028779543477,
+        450.1072545326296,
+        44.7,
+        32.9,
+        3.0879396496560054
+      )
+    )
+    timed('between polygons with wasm', () =>
+      wasm.checkCollisionBetweenPolygons(
+        748.0028779543477,
+        450.1072545326296,
+        44.7,
+        32.9,
+        3.0879396496560054,
+        748.0028779543477,
+        450.1072545326296,
+        44.7,
+        32.9,
+        3.0879396496560054
+      )
+    )
+    timed('between circle polygon without wasm', () => 
+    checkCollisionSquareCircle(746.6235756902234, 447.85529515309213, 7, 678.115569015112, 449.32998517688486, 44.7, 32.9, -2.7999795574029207))
+    timed('between circle polygon with wasm', () => 
+    wasm.checkCollisionSquareCircle(746.6235756902234, 447.85529515309213, 7, 678.115569015112, 449.32998517688486, 44.7, 32.9, -2.7999795574029207))
+    newRound(
+      Engine({
+        players: [
+          setupPlayer(positionateUserSpaceship, user),
+          setupPlayer(positionateEnemySpaceship, enemy),
+        ],
+        onSelectSpaceship,
+        background,
+        graphicController,
+        readyBtnId,
+        onStartUpdate,
+        onUpdate,
+        onGameEnd,
+        onNewRound,
+        checkCollisionSquareCircle: supportWasm()
+          ? wasm.checkCollisionSquareCircle
+          : checkCollisionSquareCircle,
+        checkCollisionBetweenPolygons: supportWasm()
+          ? wasm.checkCollisionBetweenPolygons
+          : checkCollisionBetweenPolygons,
+      })
+    )
+  })
 }

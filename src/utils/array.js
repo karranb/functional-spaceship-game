@@ -1,6 +1,5 @@
 import { compose, curry } from '_utils/base'
 import { mod, add } from '_utils/math'
-import { flip } from '_utils/helper'
 
 export const forEach = curry((fn, arr) => arr.forEach(fn))
 
@@ -19,6 +18,6 @@ export const getItem = curry((array, i) => array[i])
 export const getModItem = (list, i) =>
   compose(
     j => list[j],
-    flip(mod)(length(list)),
+    x => mod(x, length(list)),
     add(1)
   )(i)

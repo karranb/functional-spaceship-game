@@ -5,7 +5,10 @@ import {
   getVelFactors,
   processMove,
 } from '_utils/spatial'
-import { checkCollisionSquareCircle, checkCollisionBetweenPolygons } from '_utils/collision'
+import {
+  checkCollisionSquareCircleWrapper,
+  checkCollisionBetweenPolygonsWrapper,
+} from '_utils/collision'
 import { update as updateBullet } from '_models/bullet/functions'
 import { SPACESHIP_COLLISION_DAMAGE, SPACESHIP_SPEED, BULLET_POWER } from '_utils/constants'
 import Bullet from '_models/bullet'
@@ -264,22 +267,25 @@ export const processBulletCollisionDamage = (spaceship, bullet) =>
 
 const getOtherSpaceships = (spaceship, spaceships) => spaceships.filter(x => diff(x)(spaceship))
 
-const checkCollisionBetweenSpaceships = (collisionsIndex, spaceship, otherSpaceship) => {
-  const collisionIndex = collisionsIndex.getSpaceshipCollisionIndex(spaceship, otherSpaceship)
-  if (collisionIndex !== undefined) return collisionIndex
-  const hasCollision = not(isAlive(spaceship))
-    ? false
-    : checkCollisionBetweenPolygons(spaceship, otherSpaceship)
-  return collisionsIndex.setSpaceshipsCollisionsIndexes(spaceship, otherSpaceship, hasCollision)
-}
+const checkCollisionBetweenSpaceships = (collisionsIndex, spaceship, otherSpaceship, engine) =>
+  engine.getProp('checkCollisionBetweenPolygons').map(fn => {
+    const collisionIndex = collisionsIndex.getSpaceshipCollisionIndex(spaceship, otherSpaceship)
+    if (collisionIndex !== undefined) return collisionIndex
+    const hasCollision = not(isAlive(spaceship))
+      ? false
+      : checkCollisionBetweenPolygonsWrapper(spaceship, otherSpaceship, fn)
+    return collisionsIndex.setSpaceshipsCollisionsIndexes(spaceship, otherSpaceship, hasCollision)
+  })
 
-const checkBulletsCollision = (collisions, spaceship, bullets) =>
-  forEach(bullet =>
-    hashedFns({
-      true: () => collisions.setSpaceshipBulletCollision(spaceship, bullet),
-      false: empty,
-    })(and(isAlive(spaceship), checkCollisionSquareCircle(spaceship)(bullet)))
-  )(bullets)
+const checkBulletsCollision = (collisions, spaceship, bullets, engine) =>
+  engine.getProp('checkCollisionSquareCircle').map(fn =>
+    forEach(bullet => {
+      hashedFns({
+        true: () => collisions.setSpaceshipBulletCollision(spaceship, bullet),
+        false: empty,
+      })(and(isAlive(spaceship), checkCollisionSquareCircleWrapper(spaceship, bullet, fn)))
+    })(bullets)
+  )
 
 const setOutBoundCollisions = collisionsIndex =>
   forEach(bullet =>
@@ -289,13 +295,13 @@ const setOutBoundCollisions = collisionsIndex =>
     })(checkOutBounds(bullet))
   )
 
-export const processSpaceshipCollisions = (collisionsIndex, spaceship, spaceshipsList) => {
+export const processSpaceshipCollisions = (collisionsIndex, spaceship, spaceshipsList, engine) => {
   const bullets = getBullets(spaceship)
   setOutBoundCollisions(collisionsIndex)(bullets)
   const otherSpaceships = getOtherSpaceships(spaceship, spaceshipsList).filter(isAlive)
   forEach(otherSpaceship => {
-    checkBulletsCollision(collisionsIndex, otherSpaceship, bullets)
-    checkCollisionBetweenSpaceships(collisionsIndex, spaceship, otherSpaceship)
+    checkBulletsCollision(collisionsIndex, otherSpaceship, bullets, engine)
+    checkCollisionBetweenSpaceships(collisionsIndex, spaceship, otherSpaceship, engine)
   })(otherSpaceships)
   return collisionsIndex
 }
