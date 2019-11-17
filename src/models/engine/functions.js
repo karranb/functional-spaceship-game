@@ -140,7 +140,7 @@ const processPlayersCollisions = curry((engine, players) =>
     spaceships =>
       reduce(
         (collisionsIndex, spaceship) =>
-          processSpaceshipCollisions(collisionsIndex, spaceship, spaceships, engine),
+          processSpaceshipCollisions(collisionsIndex, spaceship, spaceships, engine.assignState({ players })),
         CollisionsIndex(),
         spaceships
       ),

@@ -281,7 +281,11 @@ const checkBulletsCollision = (collisions, spaceship, bullets, engine) =>
   engine.getProp('checkCollisionSquareCircle').map(fn =>
     forEach(bullet => {
       hashedFns({
-        true: () => collisions.setSpaceshipBulletCollision(spaceship, bullet),
+        true: () => {
+          collisions.setSpaceshipBulletCollision(spaceship, bullet)
+          spaceship.getProp('onBulletHit').map(listener => listener(bullet, engine))
+          // callListenerIfExist('onBulletHit')
+        },
         false: empty,
       })(and(isAlive(spaceship), checkCollisionSquareCircleWrapper(spaceship, bullet, fn)))
     })(bullets)

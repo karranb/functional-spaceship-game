@@ -50,7 +50,7 @@ export const hasBulletCollided = collisionsIndex => bullet => collisionsIndex.ha
 export const getSpaceshipSpaceshipsCollisions = collisionsIndex =>
   getSpaceshipCollisions(collisionsIndex)
 export const getSpaceshipBulletsCollisions = collisionsIndex => spaceship =>
-  Array.from(collisionsIndex.get(spaceship).bullets.keys())
+  collisionsIndex.get(spaceship) ? Array.from(collisionsIndex.get(spaceship).bullets.keys()) : []
 export const setSpaceshipsCollisionsIndexes = (collisionsIndex, constructor) => (
   spaceship,
   otherSpaceship,

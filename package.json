@@ -4,6 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
+    "tst": "babel-node src/ai/dataset/dataset-creator.js ",
     "watch": "webpack-dev-server",
     "production": "webpack -p",
     "build": "webpack",
@@ -12,18 +13,21 @@
     "stylelint": "stylelint src/web/assets/style/**/*.css"
   },
   "dependencies": {
-    "@babel/plugin-syntax-dynamic-import": "^7.2.0",
     "pixi.js": "^4.7.3"
   },
   "devDependencies": {
     "@babel/core": "^7.4.0",
+    "@babel/node": "^7.5.5",
+    "@babel/plugin-syntax-dynamic-import": "^7.2.0",
     "@babel/preset-env": "^7.4.2",
     "@babel/register": "^7.4.0",
     "babel-eslint": "^10.0.1",
     "babel-loader": "^8.0.5",
+    "babel-plugin-webpack-alias": "^2.1.2",
     "babel-preset-es2018": "^1.0.0",
     "css-loader": "^2.1.1",
     "cssnano": "^4.1.10",
+    "csv-writer": "^1.5.0",
     "eslint": "^5.15.3",
     "eslint-config-cheesecakelabs": "^3.0.2",
     "eslint-import-resolver-webpack": "^0.11.0",

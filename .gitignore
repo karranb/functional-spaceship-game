@@ -1,3 +1,5 @@
+.~lock.**
+venv-game
 node_modules/
 dist/
 package-lock.json
