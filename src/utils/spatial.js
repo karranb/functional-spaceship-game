@@ -15,8 +15,6 @@ export const getRotation = compose(
   getProp('rotation')
 )
 
-// either(getProp('rotation'), 0)
-
 export const areEqualCoordinates = (coordinate1, coordinate2) =>
   and(eq(coordinate1.x(), coordinate2.x()), eq(coordinate1.y(), coordinate2.y()))
 
