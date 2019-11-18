@@ -9,6 +9,9 @@ import { assignState, getObjPropsAndMap, getPropsAndMap } from '_utils/model'
 
 /**
  * Set a position to the bullet
+ * 
+ * (Coordinate, Bullet) -> Bullet
+ * 
  */
 const setPosition = curry((coordinate, bullet) =>
   compose(
@@ -19,6 +22,8 @@ const setPosition = curry((coordinate, bullet) =>
 
 /**
  * Calc the bullet new position and set it
+ * 
+ * (Bullet, Number, Number) ->  Bullet
  */
 const setCoordinateToBullet = (bullet, x, y) => setPosition(Coordinate(x, y), bullet)
 
