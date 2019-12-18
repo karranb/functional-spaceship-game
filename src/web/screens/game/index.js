@@ -1,6 +1,7 @@
 import Engine from '_models/engine'
 import { newRound } from '_models/engine/functions'
 import { rotate, setCoordinate } from '_models/spaceship/functions'
+import { getSpaceships, setSpaceships } from '_models/player/functions'
 import Background from '_web/components/background'
 import { setupGameView, addChild } from '_web/graphic'
 import { Spaceship as SpaceshipGraphic } from '_web/components/spaceship'
@@ -11,10 +12,8 @@ import {
   USER_SPACESHIP_COORDINATES,
   GAME_SIZE,
 } from '_utils/constants'
-import { either } from '_utils/logic'
 import { getById } from '_utils/dom'
-import { compose, map } from '_utils/base'
-import { getProp } from '_utils/model'
+import { compose, map, curry } from '_utils/base'
 import { supportWasm } from '_utils/helper'
 import { checkCollisionSquareCircle, checkCollisionBetweenPolygons } from '_utils/collision'
 
@@ -36,17 +35,17 @@ const graphicController = setupGameView(GAME_SIZE, getById('game'))
 
 const background = Background()
 
-const positionateSpaceship = (coordinate, degrees) =>
-  compose(
-    rotate(degrees),
-    setCoordinate(coordinate)
-  )
+const positionateSpaceship = curry((coordinate, degrees, spaceship) =>
+  compose(rotate(degrees), setCoordinate(coordinate))(spaceship)
+)
 
-const positionateUserSpaceship = i =>
-  positionateSpaceship(USER_SPACESHIP_COORDINATES[i], BOTTOM_RIGHT_ANGLE)
+const positionateUserSpaceship = curry((i, spaceship) =>
+  positionateSpaceship(USER_SPACESHIP_COORDINATES[i], BOTTOM_RIGHT_ANGLE, spaceship)
+)
 
-const positionateEnemySpaceship = i =>
-  positionateSpaceship(ENEMY_SPACESHIP_COORDINATES[i], TOP_LEFT_ANGLE)
+const positionateEnemySpaceship = curry((i, spaceship) =>
+  positionateSpaceship(ENEMY_SPACESHIP_COORDINATES[i], TOP_LEFT_ANGLE, spaceship)
+)
 
 const spaceshipListeners = {
   onRotate,
@@ -55,33 +54,21 @@ const spaceshipListeners = {
   onDestroy: onDestroySpaceship(graphicController),
 }
 
-const newSpaceshipGraphic = compose(
-  addChild(graphicController),
-  SpaceshipGraphic
-)
+const newSpaceshipGraphic = compose(addChild(graphicController), SpaceshipGraphic)
 
 const setupSpaceship = positionateFn => (spaceship, i) => {
   const newSpaceship = spaceship.assignState({
     ...spaceshipListeners,
     graphic: newSpaceshipGraphic(spaceship),
   })
-  return positionateFn(i)(newSpaceship)
+  return positionateFn(i, newSpaceship)
 }
 
-const eitherSpaceships = spaceships => either(spaceships, [])
-
 const setupPlayerSpaceships = positionateFn =>
-  compose(
-    eitherSpaceships,
-    map(map(setupSpaceship(positionateFn))),
-    getProp('spaceships')
-  )
+  compose(map(setupSpaceship(positionateFn)), getSpaceships)
 
 const setupPlayer = (positionateFn, player) =>
-  compose(
-    spaceships => player.assignState({ spaceships }),
-    setupPlayerSpaceships(positionateFn)
-  )(player)
+  compose(setSpaceships(player), setupPlayerSpaceships(positionateFn))(player)
 
 const engineWebElements = {
   background,
