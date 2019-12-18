@@ -1,6 +1,7 @@
 import Engine from '_models/engine'
 import { newRound } from '_models/engine/functions'
 import { rotate, setCoordinate } from '_models/spaceship/functions'
+import { getSpaceships, setSpaceships } from '_models/player/functions'
 import Background from '_web/components/background'
 import { setupGameView, addChild } from '_web/graphic'
 import { Spaceship as SpaceshipGraphic } from '_web/components/spaceship'
@@ -11,11 +12,9 @@ import {
   USER_SPACESHIP_COORDINATES,
   GAME_SIZE,
 } from '_utils/constants'
-import { either } from '_utils/logic'
 import { getById } from '_utils/dom'
-import { compose, map } from '_utils/base'
-import { getProp } from '_utils/model'
-import { supportWasm, timed } from '_utils/helper'
+import { compose, map, curry } from '_utils/base'
+import { supportWasm } from '_utils/helper'
 import { checkCollisionSquareCircle, checkCollisionBetweenPolygons } from '_utils/collision'
 
 import {
@@ -30,118 +29,87 @@ import {
   onGameEnd,
 } from './listeners'
 
-/**
- * Creates the game graphics, listeners, engine and starts a new round.
- *
- * @param {Player} user
- * @param {Player} enemy
- */
-export const startGame = (user, enemy) => {
-  const graphicController = setupGameView(GAME_SIZE, getById('game'))
-  const readyBtnId = 'btn_ready'
-  const background = Background()
-  addChild(graphicController)(background)
+const readyBtnId = 'btn_ready'
 
-  const positionateSpaceship = (coordinate, degrees) =>
-    compose(
-      rotate(degrees),
-      setCoordinate(coordinate)
-    )
+const graphicController = setupGameView(GAME_SIZE, getById('game'))
 
-  const positionateUserSpaceship = i =>
-    positionateSpaceship(USER_SPACESHIP_COORDINATES[i], BOTTOM_RIGHT_ANGLE)
+const background = Background()
 
-  const positionateEnemySpaceship = i =>
-    positionateSpaceship(ENEMY_SPACESHIP_COORDINATES[i], TOP_LEFT_ANGLE)
+const positionateSpaceship = curry((coordinate, degrees, spaceship) =>
+  compose(rotate(degrees), setCoordinate(coordinate))(spaceship)
+)
 
-  const spaceshipListeners = {
-    onRotate,
-    onSetCoordinate,
-    onStop: onSpaceshipStop(graphicController),
-    onDestroy: onDestroySpaceship(graphicController),
-  }
+const positionateUserSpaceship = curry((i, spaceship) =>
+  positionateSpaceship(USER_SPACESHIP_COORDINATES[i], BOTTOM_RIGHT_ANGLE, spaceship)
+)
 
-  const newSpaceshipGraphic = compose(
-    addChild(graphicController),
-    SpaceshipGraphic
-  )
+const positionateEnemySpaceship = curry((i, spaceship) =>
+  positionateSpaceship(ENEMY_SPACESHIP_COORDINATES[i], TOP_LEFT_ANGLE, spaceship)
+)
 
-  const setupSpaceship = positionateFn => (spaceship, i) => {
-    const newSpaceship = spaceship.assignState({
-      ...spaceshipListeners,
-      graphic: newSpaceshipGraphic(spaceship),
-    })
-    return positionateFn(i)(newSpaceship)
-  }
+const spaceshipListeners = {
+  onRotate,
+  onSetCoordinate,
+  onStop: onSpaceshipStop(graphicController),
+  onDestroy: onDestroySpaceship(graphicController),
+}
 
-  const eitherSpaceships = spaceships => either(spaceships, [])
+const newSpaceshipGraphic = compose(addChild(graphicController), SpaceshipGraphic)
 
-  const setupPlayerSpaceships = positionateFn =>
-    compose(
-      eitherSpaceships,
-      map(map(setupSpaceship(positionateFn))),
-      getProp('spaceships')
-    )
+const setupSpaceship = positionateFn => (spaceship, i) => {
+  const newSpaceship = spaceship.assignState({
+    ...spaceshipListeners,
+    graphic: newSpaceshipGraphic(spaceship),
+  })
+  return positionateFn(i, newSpaceship)
+}
 
-  const setupPlayer = (positionateFn, player) =>
-    compose(
-      spaceships => player.assignState({ spaceships }),
-      setupPlayerSpaceships(positionateFn)
-    )(player)
-  import('_web/webassembly').then(wasm => {
-    timed('between polygons without wasm', () =>
-      checkCollisionBetweenPolygons(
-        748.0028779543477,
-        450.1072545326296,
-        44.7,
-        32.9,
-        3.0879396496560054,
-        748.0028779543477,
-        450.1072545326296,
-        44.7,
-        32.9,
-        3.0879396496560054
-      )
-    )
-    timed('between polygons with wasm', () =>
-      wasm.checkCollisionBetweenPolygons(
-        748.0028779543477,
-        450.1072545326296,
-        44.7,
-        32.9,
-        3.0879396496560054,
-        748.0028779543477,
-        450.1072545326296,
-        44.7,
-        32.9,
-        3.0879396496560054
-      )
-    )
-    timed('between circle polygon without wasm', () => 
-    checkCollisionSquareCircle(746.6235756902234, 447.85529515309213, 7, 678.115569015112, 449.32998517688486, 44.7, 32.9, -2.7999795574029207))
-    timed('between circle polygon with wasm', () => 
-    wasm.checkCollisionSquareCircle(746.6235756902234, 447.85529515309213, 7, 678.115569015112, 449.32998517688486, 44.7, 32.9, -2.7999795574029207))
+const setupPlayerSpaceships = positionateFn =>
+  compose(map(setupSpaceship(positionateFn)), getSpaceships)
+
+const setupPlayer = (positionateFn, player) =>
+  compose(setSpaceships(player), setupPlayerSpaceships(positionateFn))(player)
+
+const engineWebElements = {
+  background,
+  readyBtnId,
+  graphicController,
+}
+
+const engineListeners = {
+  onSelectSpaceship,
+  onStartUpdate,
+  onUpdate,
+  onGameEnd,
+  onNewRound,
+}
+
+const getCheckCollisionSquareCircle = wasm =>
+  supportWasm() ? wasm.checkCollisionSquareCircle : checkCollisionSquareCircle
+
+const getCheckCollisionBetweenPolygons = wasm =>
+  supportWasm() ? wasm.checkCollisionBetweenPolygons : checkCollisionBetweenPolygons
+
+const setupPlayers = map(({ player, positionateFn }) => setupPlayer(positionateFn, player))
+
+const startFirstRound = players =>
+  import('_web/webassembly').then(wasm =>
     newRound(
       Engine({
-        players: [
-          setupPlayer(positionateUserSpaceship, user),
-          setupPlayer(positionateEnemySpaceship, enemy),
-        ],
-        onSelectSpaceship,
-        background,
-        graphicController,
-        readyBtnId,
-        onStartUpdate,
-        onUpdate,
-        onGameEnd,
-        onNewRound,
-        checkCollisionSquareCircle: supportWasm()
-          ? wasm.checkCollisionSquareCircle
-          : checkCollisionSquareCircle,
-        checkCollisionBetweenPolygons: supportWasm()
-          ? wasm.checkCollisionBetweenPolygons
-          : checkCollisionBetweenPolygons,
+        ...engineWebElements,
+        ...engineListeners,
+        players,
+        checkCollisionSquareCircle: getCheckCollisionSquareCircle(wasm),
+        checkCollisionBetweenPolygons: getCheckCollisionBetweenPolygons(wasm),
       })
     )
-  })
+  )
+
+export const startGame = (user, enemy) => {
+  addChild(graphicController)(background)
+  const players = setupPlayers([
+    { player: user, positionateFn: positionateUserSpaceship },
+    { player: enemy, positionateFn: positionateEnemySpaceship },
+  ])
+  startFirstRound(players)
 }

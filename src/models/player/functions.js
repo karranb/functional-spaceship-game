@@ -9,119 +9,100 @@ import {
   setDestination,
   disselect,
 } from '_models/spaceship/functions'
-import { compose, map } from '_utils/base'
+import { compose, map, curry } from '_utils/base'
 import { find, filter, every } from '_utils/array'
 import { getProp } from '_utils/model'
 import { diff, not, fEither } from '_utils/logic'
 
-export const getSpaceships = player =>
-  compose(
-    fEither([]),
-    getProp('spaceships')
-  )(player)
+/**
+ *
+ * player -> [spaceships]
+ */
+export const getSpaceships = compose(fEither([]), getProp('spaceships'))
+
+export const setSpaceships = curry((player, spaceships) => player.assignState({ spaceships }))
 
 /**
  * return player's selected spaceship
+ * player -> spaceship
  */
-export const getSelected = player =>
-  compose(
-    find(isSelected),
-    getSpaceships
-  )(player)
+export const getSelected = compose(find(isSelected), getSpaceships)
 
 /**
  * return player's unselected spaceships
+ * player -> [spaceship]
  */
-const getUnselected = player =>
-  compose(
-    filter(isNotSelected),
-    getSpaceships
-  )(player)
+const getUnselected = compose(filter(isNotSelected), getSpaceships)
 
 /**
  * Return true if the player is the user
+ * player -> bool
  */
-export const isUser = player =>
-  compose(
-    fEither(false),
-    getProp('isUser')
-  )(player)
+export const isUser = compose(fEither(false), getProp('isUser'))
 
 /**
  * Return false if the player is the user
+ * player -> bool
  */
-export const isNotUser = player => not(isUser(player))
+export const isNotUser = compose(not, isUser)
 
 /** getSpaceships
  * Replace the selected spaceship
  */
 
-export const replaceSelected = player => selectedSpaceship =>
+export const replaceSelected = curry((player, selectedSpaceship) =>
   compose(
-    spaceships => player.assignState({ spaceships }),
+    setSpaceships(player),
     unselectedSpaceships => [selectedSpaceship, ...unselectedSpaceships],
     getUnselected
   )(player)
+)
 
 /**
  * disselect player spaceships and select one
  */
-export const selectSpaceship = spaceship => player =>
+export const selectSpaceship = curry((spaceship, player) =>
   compose(
-    spaceships => player.assignState({ spaceships }),
+    setSpaceships(player),
     otherSpaceships => [...map(disselect, otherSpaceships), select(spaceship)],
     filter(sp => diff(spaceship, sp)),
     getSpaceships
   )(player)
+)
 
 /**
  * return true if the player spaceships are ready
+ * player -> book
  */
-export const isReady = player =>
-  compose(
-    every(isSpaceshipReady),
-    getSpaceships
-  )(player)
+export const isReady = compose(every(isSpaceshipReady), getSpaceships)
 
 /**
  * update player spaceships state
  */
 
 export const update = player =>
-  compose(
-    spaceships => player.assignState({ spaceships }),
-    map(updateSpaceship),
-    getSpaceships
-  )(player)
+  compose(setSpaceships(player), map(updateSpaceship), getSpaceships)(player)
 
-const getAliveSpaceships = player =>
-  compose(
-    filter(isAlive),
-    getSpaceships
-  )(player)
+/**
+ * player -> [spaceships]
+ */
+const getAliveSpaceships = compose(filter(isAlive), getSpaceships)
 
 /**
  * remove destroyed spaceships from player listx
  */
 export const removeDestroyedSpaceships = player =>
-  player.assignState({ spaceships: getAliveSpaceships(player) })
+  compose(setSpaceships(player), getAliveSpaceships)(player)
 
 /**
  * Set the player's selected spaceship target
  */
-export const setSelectedTarget = target => player =>
-  compose(
-    replaceSelected(player),
-    setTarget(target),
-    getSelected
-  )(player)
-
+export const setSelectedTarget = curry((target, player) =>
+  compose(replaceSelected(player), setTarget(target), getSelected)(player)
+)
 /**
  * set the player's selected spaceship destination
  */
-export const setSelectedDestination = destination => player =>
-  compose(
-    replaceSelected(player),
-    setDestination(destination),
-    getSelected
-  )(player)
+export const setSelectedDestination = curry((destination, player) =>
+  compose(replaceSelected(player), setDestination(destination), getSelected)(player)
+)
