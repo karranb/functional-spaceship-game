@@ -11,4 +11,4 @@ when you are done click on the `ready` button.
 
 You need to try to avoid to get hit by the other spaceships and to hit them with your spaceship bullets. 
 
-![Sample initial round](/docs/sample_initial_rorund.gif)
+![Sample initial round](/docs/sample_initial_round.gif)
