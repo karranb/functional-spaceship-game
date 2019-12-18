@@ -1,10 +1,11 @@
 const path = require('path')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
 
 module.exports = {
   entry: ['./src/index.js', './src/web/assets/style/index.css'],
   output: {
-    filename: './bundle.js',
+    path: path.resolve(__dirname, 'dist'),
     webassemblyModuleFilename: '[modulehash].wasm',
   },
   module: {
@@ -59,6 +60,13 @@ module.exports = {
     new MiniCssExtractPlugin({
       filename: 'css/[name].bundle.css',
       chunkFilename: '[id].css',
+    }),
+    new HtmlWebpackPlugin({
+      cache: true,
+      title: 'Loogup',
+      template: path.join(__dirname, 'index.html'),
+      output:path.resolve(__dirname, 'dist'),
+      xhtml: true,
     }),
   ],
   // watch: true,
